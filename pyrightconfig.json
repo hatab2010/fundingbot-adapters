@@ -1,0 +1,30 @@
+{
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "strict",
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "tests"
+  ],
+  "extraPaths": [
+    "src",
+    "../fundingbot-sdk/src"
+  ],
+  "reportMissingImports": "warning",
+  "reportMissingTypeStubs": "none",
+  "reportUnknownVariableType": "error",
+  "reportUnknownParameterType": "error",
+  "reportUnknownArgumentType": "error",
+  "reportUnknownMemberType": "error",
+  "reportInvalidCast": "error",
+  "reportUnnecessaryCast": "warning",
+  "reportOptionalMemberAccess": "error",
+  "reportOptionalSubscript": "error",
+  "reportOptionalCall": "error",
+  "reportMissingTypeArguments": "error",
+  "strictListInference": true,
+  "strictDictionaryInference": true,
+  "strictParameterNoneValue": true
+}
+

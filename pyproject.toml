@@ -1,0 +1,61 @@
+[tool.poetry]
+name = "fundingbot-adapters"
+version = "0.1.0"
+description = "Каркас проекта для реализаций адаптеров бирж на базе fundingbot-sdk"
+authors = ["FundingBot Team <dev@fundingbot.io>"]
+readme = "README.md"
+packages = [
+  { include = "fundingbot_adapters", from = "src" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+fundingbot-sdk = { path = "submodules/fundingbot-sdk", develop = true }
+ccxt = "^4.4.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.11.5"
+pytest = "^8.3.5"
+pytest-asyncio = "^0.23.8"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0", "poetry-dynamic-versioning>=1.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+src = ["src", "submodules/fundingbot-sdk/src"]
+select = ["ALL"]
+ignore = [
+  "D203", "ANN101", "ANN102", "ERA001", "COM812", "INP001", "PLR0913", "PLR0917", "TC001", "D107",
+  "RUF001", "RUF002", "RUF003", "D100", "ISC001", "ISC002", "N805", "PLR0904", "CPY001", "DOC201"
+]
+preview = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = true
+docstring-code-format = false
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "D102", "PLR0914", "ANN201", "PLR6301", "SLF001", "TC003", "E303"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+  "fundingbot_adapters", "fundingbot_sdk"
+]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.semantic_release]
+tag_format = "fundingbot-adapters@{version}"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+pattern = "default-unprefixed"
+pattern-prefix = "fundingbot-adapters@"
