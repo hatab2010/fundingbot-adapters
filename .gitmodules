@@ -1,0 +1,3 @@
+[submodule "submodules/fundingbot-sdk"]
+	path = submodules/fundingbot-sdk
+	url = https://github.com/hatab2010/fundingbot-sdk
