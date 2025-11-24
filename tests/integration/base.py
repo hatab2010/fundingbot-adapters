@@ -1,8 +1,9 @@
+import re
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import AsyncIterator
 
-import re
 import pytest
 
 from fundingbot_sdk.contracts.ports.cex_client import CexClientPort
@@ -24,7 +25,7 @@ class CcxtClientContract:
         return Decimal(5)
 
     @pytest.fixture
-    def client(self) -> CexClientPort:
+    def client(self) -> AsyncIterator[CexClientPort]:
         """Должен быть реализован в наследнике для конкретной биржи."""
         raise NotImplementedError
 
@@ -132,7 +133,7 @@ class CcxtClientContract:
         pattern = re.compile(r"^(?P<base>[A-Z0-9]{1,32})\/USDT:USDT$")
         for item in data:
             assert pattern.match(item.symbol), (
-                f"symbol не соответствует ^(?P<base>[A-Z0-9]{2,32})\\/USDT:USDT$: {item.symbol}"
+                f"symbol не соответствует ^(?P<base>[A-Z0-9]{2, 32})\\/USDT:USDT$: {item.symbol}"
             )
             dt = getattr(item, "funding_date", None)
             assert dt is not None, "funding_date отсутствует в элементе ответа"

@@ -61,7 +61,7 @@ class BitgetClient(CcxtClient):
     @rate_limited(10)
     @map_sdk_errors
     @override
-    # В ccxt нет реализации fetch_funding_rates() для biget, поэтому реализуем руками,
+    # В ccxt нет реализации fetch_funding_rates() для bitget, поэтому реализуем руками,
     # переопределяя метод базового класса.
     async def get_funding_usdt_rates(self, *, is_active: bool = True) -> Sequence[FundingProtocol]:
         await self._exchange.load_markets()
@@ -96,6 +96,6 @@ class BitgetClient(CcxtClient):
             parsed.append(model)
 
         if not parsed:
-            raise FundingRateUnavailableError(symbol="*/USDT", exchange=self.EXCHANGE_ID)
+            raise FundingRateUnavailableError(symbol="*/USDT:USDT", exchange=self.EXCHANGE_ID)
 
         return parsed

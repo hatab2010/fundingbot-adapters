@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 
 import pytest
-from tests.integration.base import CcxtClientContract
+from tests.integration.base import CcxtClientContract, CexClientPort
 
 from config import BITGET_API_KEY, BITGET_PASSWORD, BITGET_SECRET, TESTNET
 from fundingbot_adapters.bitget_client import BitgetClient
@@ -12,7 +12,7 @@ class TestBitgetClient(CcxtClientContract):
     """Интеграционный контракт для клиента Bitget."""
 
     @pytest.fixture
-    async def client(self) -> AsyncIterator[BitgetClient]:
+    async def client(self) -> AsyncIterator[CexClientPort]:
         """Выдавать Bitget‑клиент и закрывать соединение после теста.
 
         Yields:
