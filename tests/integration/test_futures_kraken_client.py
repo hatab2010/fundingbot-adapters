@@ -61,10 +61,10 @@ class TestFututresKrakenClient(CcxtClientContract):
     async def test_get_trigger_orders(self, client: CcxtClient, symbol: str) -> None:
         await super().test_get_trigger_orders(client, 'XRP/USD:USD')
 
-    @pytest.mark.skip
+    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
     @pytest.mark.asyncio
     async def test_tpsl_lifecycle_asserts(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
-        await super().test_tpsl_lifecycle_asserts(client, symbol, amount)
+        await super().test_tpsl_lifecycle_asserts(client, 'XRP/USD:USD', amount)
 
     @pytest.mark.skip
     @pytest.mark.asyncio
@@ -90,27 +90,24 @@ class TestFututresKrakenClient(CcxtClientContract):
     async def test_get_instrument_info(self, client: CcxtClient, symbol: str) -> None:
         await super().test_get_instrument_info(client, 'XRP/USD:USD')
 
-    @pytest.mark.skip
     @pytest.mark.asyncio
     async def test_full_cycle(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_get_instrument_info(client, symbol)
+        await super().test_get_instrument_info(client, 'XRP/USD:USD')
 
-    @pytest.mark.skip
+    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
     @pytest.mark.asyncio
     async def test_double_init_params(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_double_init_params(client, symbol)
+        await super().test_double_init_params(client, 'XRP/USD:USD')
 
-    @pytest.mark.skip
     @pytest.mark.asyncio
     async def test_set_leverage(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_set_leverage(client, symbol)
+        await super().test_set_leverage(client, 'XRP/USD:USD')
 
-    @pytest.mark.skip
+    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
     @pytest.mark.asyncio
     async def test_set_position_mode(self, client: CcxtClient) -> None:
         await super().test_set_position_mode(client)
 
-    @pytest.mark.skip
     @pytest.mark.asyncio
     async def test_set_margin_mode(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_get_instrument_info(client, symbol)
+        await super().test_get_instrument_info(client, 'XRP/USD:USD')
