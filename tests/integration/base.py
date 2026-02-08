@@ -47,7 +47,7 @@ class CcxtClientContract:
     @pytest.mark.asyncio
     async def test_get_balance(self, client: CcxtClient):
         """Тестирование получения баланса."""
-        balance = await client.get_balance("USDT")
+        balance = await client.get_balance("USD")
         assert balance.free > 0
 
     @pytest.mark.asyncio
