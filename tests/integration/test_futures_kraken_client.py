@@ -17,6 +17,16 @@ class TestFututresKrakenClient(CcxtClientContract):
     """Интеграционный контракт для клиента Kraken."""
 
     @pytest.fixture
+    def symbol(self) -> str:
+        """Символ для тестирования."""
+        return "XRP/USD:USD"
+
+    @pytest.fixture
+    def btc_symbol(self) -> str:
+        """Символ для тестирования."""
+        return "BTC/USD:USD"
+
+    @pytest.fixture
     async def client(self) -> AsyncIterator[CexClientPort]:
         """Выдавать Kraken‑клиент и закрывать соединение после теста.
 
@@ -39,34 +49,12 @@ class TestFututresKrakenClient(CcxtClientContract):
 
     # Скипаем тесты, которые будут исправлены позже
 
-    @pytest.mark.asyncio
-    async def test_get_balance(self, client: CcxtClient):
-        """Тестирование получения баланса."""
-        balance = await client.get_balance("USD")
-        assert balance.free > 0
-
-    #    @pytest.mark.skip
-    @pytest.mark.asyncio
-    async def test_get_ticker(self, client: CcxtClient) -> None:
-        await client.load_markets()
-        data = await client.get_ticker("BTC/USD:USD")
-        assert data.last_price != 0
-
-    @pytest.mark.asyncio
-    async def test_close_positions(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_close_positions(client, 'XRP/USD:USD')
-
-    @pytest.mark.skip
+    @pytest.mark.skip('ccxt.base.errors.AuthenticationError: krakenfutures {"result":"error","error":"authenticationError","serverTime":"2026-02-08T18:58:16.273Z"}')
     @pytest.mark.asyncio
     async def test_get_trigger_orders(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_get_trigger_orders(client, 'XRP/USD:USD')
+        await super().test_get_trigger_orders(client, symbol)
 
-    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
-    @pytest.mark.asyncio
-    async def test_tpsl_lifecycle_asserts(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
-        await super().test_tpsl_lifecycle_asserts(client, 'XRP/USD:USD', amount)
-
-    @pytest.mark.skip
+    @pytest.mark.skip('ccxt.base.errors.BadSymbol: krakenfutures does not have market symbol FI_BTCUSD_230630')
     @pytest.mark.asyncio
     async def test_get_funding_usdt_rates(self, client: CcxtClient) -> None:
         data = await client.get_funding_usdt_rates()
@@ -86,28 +74,32 @@ class TestFututresKrakenClient(CcxtClientContract):
             now_utc = datetime.now(UTC)
             assert dt >= now_utc - timedelta(seconds=5), f"funding_date в прошлом: {dt} < {now_utc}"
 
-    @pytest.mark.asyncio
-    async def test_get_instrument_info(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_get_instrument_info(client, 'XRP/USD:USD')
 
+    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
+    #@pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setMarginMode() is not supported yet')
+    #@pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures: createOrder failed due to outsidePriceCollar')
     @pytest.mark.asyncio
-    async def test_full_cycle(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_get_instrument_info(client, 'XRP/USD:USD')
+    async def test_tpsl_lifecycle_asserts(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
+        await super().test_tpsl_lifecycle_asserts(client, symbol, amount)
+
+    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
+    #@pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setMarginMode() is not supported yet')
+    #@pytest.mark.skip('ccxt.base.errors.InvalidOrder: krakenfutures: createOrder failed due to outsidePriceCollar')
+    @pytest.mark.asyncio
+    async def test_full_cycle(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
+        await super().test_full_cycle(client, symbol, amount)
 
     @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
     @pytest.mark.asyncio
     async def test_double_init_params(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_double_init_params(client, 'XRP/USD:USD')
-
-    @pytest.mark.asyncio
-    async def test_set_leverage(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_set_leverage(client, 'XRP/USD:USD')
+        await super().test_double_init_params(client, symbol)
 
     @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
     @pytest.mark.asyncio
     async def test_set_position_mode(self, client: CcxtClient) -> None:
         await super().test_set_position_mode(client)
 
+    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setMarginMode() is not supported yett')
     @pytest.mark.asyncio
     async def test_set_margin_mode(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_get_instrument_info(client, 'XRP/USD:USD')
+        await super().test_set_margin_mode(client, symbol)

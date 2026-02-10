@@ -20,6 +20,11 @@ class CcxtClientContract:
         return "XRP/USDT:USDT"
 
     @pytest.fixture
+    def btc_symbol(self) -> str:
+        """Символ для тестирования."""
+        return "BTC/USDT:USDT"
+
+    @pytest.fixture
     def amount(self) -> Decimal:
         """Количество контрактов для тестирования."""
         return Decimal(5)
@@ -146,9 +151,9 @@ class CcxtClientContract:
             assert dt >= now_utc - timedelta(seconds=5), f"funding_date в прошлом: {dt} < {now_utc}"
 
     @pytest.mark.asyncio
-    async def test_get_ticker(self, client: CcxtClient):
+    async def test_get_ticker(self, client: CcxtClient, btc_symbol: str):
         await client.load_markets()
-        data = await client.get_ticker("BTC/USDT:USDT")
+        data = await client.get_ticker(btc_symbol)
         assert data.last_price != 0
 
     @pytest.mark.asyncio
