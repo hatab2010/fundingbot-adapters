@@ -9,11 +9,11 @@ from fundingbot_sdk.toolkit.client_base import CcxtClient
 from tests.integration.base import CcxtClientContract, CexClientPort
 
 from config import KRAKEN_API_KEY, KRAKEN_PASSWORD, KRAKEN_SECRET, TESTNET
-from fundingbot_adapters.futures_kraken_client import FuturesKrakenClient
+from fundingbot_adapters.kraken_futures_client import KrakenFuturesClient
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
 
 
-class TestFututresKrakenClient(CcxtClientContract):
+class TestKrakenFuturesClient(CcxtClientContract):
     """Интеграционный контракт для клиента Kraken."""
 
     @pytest.fixture
@@ -41,7 +41,7 @@ class TestFututresKrakenClient(CcxtClientContract):
             testnet=TESTNET,
             default_type="swap",
         )
-        client = FuturesKrakenClient(config, verbose=True)
+        client = KrakenFuturesClient(config, verbose=True)
         try:
             yield client
         finally:
@@ -93,11 +93,6 @@ class TestFututresKrakenClient(CcxtClientContract):
     @pytest.mark.asyncio
     async def test_double_init_params(self, client: CcxtClient, symbol: str) -> None:
         await super().test_double_init_params(client, symbol)
-
-    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
-    @pytest.mark.asyncio
-    async def test_set_position_mode(self, client: CcxtClient) -> None:
-        await super().test_set_position_mode(client)
 
     @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setMarginMode() is not supported yett')
     @pytest.mark.asyncio

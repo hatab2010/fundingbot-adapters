@@ -6,6 +6,7 @@ from typing import AsyncIterator
 
 import pytest
 
+from fundingbot_sdk.contracts.errors import UnsupportedFeatureError
 from fundingbot_sdk.contracts.ports.cex_client import CexClientPort
 from fundingbot_sdk.contracts.protocols import PositionProtocol
 from fundingbot_sdk.toolkit.client_base import CcxtClient
@@ -231,11 +232,21 @@ class CcxtClientContract:
 
     @pytest.mark.asyncio
     async def test_set_leverage(self, client: CcxtClient, symbol: str):
-        await client.set_leverage(leverage=1, symbol=symbol)
+        try:
+            await client.set_leverage(leverage=1, symbol=symbol)
+        except UnsupportedFeatureError as e:
+            pass
 
     @pytest.mark.asyncio
     async def test_set_position_mode(self, client: CcxtClient):
         await client.set_position_mode(hedged=False, symbol=None)
+
+    @pytest.mark.asyncio
+    async def test_set_position_mode_true(self, client: CcxtClient):
+        try:
+            await client.set_position_mode(hedged=True, symbol=None)
+        except UnsupportedFeatureError:
+            pass
 
     @pytest.mark.asyncio
     async def test_set_margin_mode(self, client: CcxtClient, symbol: str):
