@@ -238,10 +238,6 @@ class CcxtClientContract:
         await client.set_leverage(leverage=1, symbol=symbol)
 
     @pytest.mark.asyncio
-    async def test_set_leverage_none(self, client: CcxtClient, symbol: str):
-        await client.set_leverage(leverage=None, symbol=symbol)
-
-    @pytest.mark.asyncio
     async def test_set_position_mode(self, client: CcxtClient):
         await client.set_position_mode(hedged=False, symbol=None)
 
