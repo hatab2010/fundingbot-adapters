@@ -18,6 +18,7 @@
 git clone --recurse-submodules <URL-репозитория-adapters> fundingbot-adapters
 cd fundingbot-adapters
 poetry install
+pip uninstall aiodns
 ```
 
 Если репозиторий уже клонирован без сабмодуля:
@@ -25,6 +26,7 @@ poetry install
 ```bash
 git submodule update --init --recursive
 poetry install
+pip uninstall aiodns
 ```
 
 Обновить сабмодуль на актуальное состояние ветки по умолчанию:
