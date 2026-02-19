@@ -93,8 +93,3 @@ class TestKrakenFuturesClient(CcxtClientContract):
     @pytest.mark.asyncio
     async def test_double_init_params(self, client: CcxtClient, symbol: str) -> None:
         await super().test_double_init_params(client, symbol)
-
-    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setMarginMode() is not supported yett')
-    @pytest.mark.asyncio
-    async def test_set_margin_mode(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_set_margin_mode(client, symbol)

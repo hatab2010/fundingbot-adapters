@@ -235,10 +235,11 @@ class CcxtClientContract:
 
     @pytest.mark.asyncio
     async def test_set_leverage(self, client: CcxtClient, symbol: str):
-        try:
-            await client.set_leverage(leverage=1, symbol=symbol)
-        except UnsupportedFeatureError as e:
-            pass
+        await client.set_leverage(leverage=1, symbol=symbol)
+
+    @pytest.mark.asyncio
+    async def test_set_leverage_none(self, client: CcxtClient, symbol: str):
+        await client.set_leverage(leverage=None, symbol=symbol)
 
     @pytest.mark.asyncio
     async def test_set_position_mode(self, client: CcxtClient):
