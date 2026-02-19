@@ -1,7 +1,12 @@
+import base64
+import hashlib
+import hmac
 import json
+import time
 from typing import Any
+from urllib.parse import urlencode
 
-from fundingbot_sdk.contracts.errors import UnsupportedFeatureError
+from fundingbot_sdk.contracts.errors import UnsupportedFeatureError, UnknownExchangeError
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
 from fundingbot_sdk.toolkit.client_base import CcxtClient
 
@@ -58,7 +63,7 @@ class KrakenFuturesClient(CcxtClient):
 
     async def set_margin_mode(self, *, margin_mode: str, symbol: str | None = None, params: dict[str, Any] | None = None):
         # Согласно docs: можно задать symbol, marginMode и/или maxLeverage.[web:1]
-        request_body_dict = {'symbol': NORMALIZATION_UTILS.ccxt_to_pf(symbol)}
+        params_dict = {'symbol': NORMALIZATION_UTILS.ccxt_to_pf(symbol)}
         # params = {"symbol": symbol}
 
         # Если явно указать режим
@@ -67,13 +72,38 @@ class KrakenFuturesClient(CcxtClient):
         elif margin_mode.lower() == "isolated":
             if 'leverage' not in params:
                 raise ValueError("params should contain 'leverage'")
-            request_body_dict['maxLeverage'] = params['leverage']
+            params_dict['maxLeverage'] = params['leverage']
         else:
             raise ValueError("mode must be 'cross' or 'isolated'")
 
-        raw_data = await self._exchange.request(
+        headers = await self.create_request_headers(params_dict)
+
+        resp = await self._exchange.request(
             "leveragepreferences",
+            "public",
             method="PUT",
-            body=json.dumps(request_body_dict),
+            params=params_dict,
+            headers=headers,
         )
-        return raw_data.json()
+        if resp['result'] != 'success':
+            raise UnknownExchangeError()
+
+    async def create_request_headers(self, params_dict: dict[str, Any]) -> dict[str, str]:
+        nonce = str(int(time.time() * 1000))
+        headers = {
+            "APIKey": self._exchange.apiKey,
+            "Nonce": nonce,
+            "Authent": self.create_futures_signature('/api/v3/leveragepreferences', nonce, urlencode(params_dict)),
+            "Content-Type": "application/json",
+        }
+        return headers
+
+    def create_futures_signature(self, endpoint: str, nonce: str, postdata: str) -> str:
+        message = postdata + nonce + endpoint
+        sha256_hash = hashlib.sha256(message.encode('utf-8')).digest()
+        signature = hmac.new(
+            base64.b64decode(self._exchange.secret),
+            sha256_hash,
+            hashlib.sha512
+        ).digest()
+        return base64.b64encode(signature).decode('utf-8')
