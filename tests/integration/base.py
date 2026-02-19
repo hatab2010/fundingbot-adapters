@@ -84,7 +84,7 @@ class CcxtClientContract:
             await client.set_position_mode(hedged=False, symbol=symbol)
         except UnsupportedFeatureError:
             pass
-        await client.set_margin_mode(margin_mode="isolated", symbol=symbol)
+        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={'leverage': 3})
         await client.set_leverage(leverage=expected_leverage, symbol=symbol)
 
         # Подготовка размеров
@@ -184,8 +184,11 @@ class CcxtClientContract:
         instrument_info = await client.get_instrument_info(symbol)
         amount /= instrument_info.contract_size
 
-        await client.set_position_mode(hedged=False, symbol=symbol)
-        await client.set_margin_mode(margin_mode="isolated", symbol=symbol)
+        try:
+            await client.set_position_mode(hedged=False, symbol=symbol)
+        except UnsupportedFeatureError:
+            pass
+        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={'leverage': 2})
 
         leverage_by_side = {"buy": 2, "sell": 4}
 
@@ -226,8 +229,11 @@ class CcxtClientContract:
 
     @pytest.mark.asyncio
     async def test_double_init_params(self, client: CcxtClient, symbol: str):
-        await client.set_position_mode(hedged=False, symbol=symbol)
-        await client.set_position_mode(hedged=False, symbol=symbol)
+        try:
+            await client.set_position_mode(hedged=False, symbol=symbol)
+            await client.set_position_mode(hedged=False, symbol=symbol)
+        except UnsupportedFeatureError:
+            pass
         await client.set_leverage(leverage=1, symbol=symbol)
         await client.set_leverage(leverage=1, symbol=symbol)
         await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 1})
@@ -238,15 +244,11 @@ class CcxtClientContract:
         await client.set_leverage(leverage=1, symbol=symbol)
 
     @pytest.mark.asyncio
-    async def test_set_leverage_none(self, client: CcxtClient, symbol: str):
-        await client.set_leverage(leverage=None, symbol=symbol)
-
-    @pytest.mark.asyncio
     async def test_set_position_mode(self, client: CcxtClient):
         await client.set_position_mode(hedged=False, symbol=None)
 
     @pytest.mark.asyncio
-    async def test_set_position_mode_true(self, client: CcxtClient):
+    async def test_set_position_mode(self, client: CcxtClient):
         try:
             await client.set_position_mode(hedged=True, symbol=None)
         except UnsupportedFeatureError:

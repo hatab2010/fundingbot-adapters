@@ -74,22 +74,27 @@ class TestKrakenFuturesClient(CcxtClientContract):
             now_utc = datetime.now(UTC)
             assert dt >= now_utc - timedelta(seconds=5), f"funding_date в прошлом: {dt} < {now_utc}"
 
+    @pytest.mark.skip('#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures')
+    @pytest.mark.asyncio
+    async def test_get_positions(self, client: CcxtClient, symbol: str):
+        await super().test_get_positions(client, symbol)
 
-    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
-    #@pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setMarginMode() is not supported yet')
-    #@pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures: createOrder failed due to outsidePriceCollar')
+    @pytest.mark.skip('#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures')
+    @pytest.mark.asyncio
+    async def test_close_positions(self, client: CcxtClient, symbol: str):
+        await super().test_close_positions(client, symbol)
+
+    @pytest.mark.skip('#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures')
     @pytest.mark.asyncio
     async def test_tpsl_lifecycle_asserts(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
         await super().test_tpsl_lifecycle_asserts(client, symbol, amount)
 
-    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
-    #@pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setMarginMode() is not supported yet')
-    #@pytest.mark.skip('ccxt.base.errors.InvalidOrder: krakenfutures: createOrder failed due to outsidePriceCollar')
+    @pytest.mark.skip('#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures')
     @pytest.mark.asyncio
     async def test_full_cycle(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
         await super().test_full_cycle(client, symbol, amount)
 
-    @pytest.mark.skip('ccxt.base.errors.NotSupported: krakenfutures setPositionMode() is not supported yet')
     @pytest.mark.asyncio
     async def test_double_init_params(self, client: CcxtClient, symbol: str) -> None:
         await super().test_double_init_params(client, symbol)
+
