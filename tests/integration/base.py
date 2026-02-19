@@ -14,17 +14,6 @@ from fundingbot_sdk.toolkit.client_base import CcxtClient
 
 class CcxtClientContract:
     """Тестовый контракт для проверки работы CcxtClient."""
-
-    @pytest.fixture
-    def symbol(self) -> str:
-        """Символ для тестирования."""
-        return "XRP/USDT:USDT"
-
-    @pytest.fixture
-    def btc_symbol(self) -> str:
-        """Символ для тестирования."""
-        return "BTC/USDT:USDT"
-
     @pytest.fixture
     def amount(self) -> Decimal:
         """Количество контрактов для тестирования."""

@@ -74,7 +74,7 @@ class TestKrakenFuturesClient(CcxtClientContract):
             now_utc = datetime.now(UTC)
             assert dt >= now_utc - timedelta(seconds=5), f"funding_date в прошлом: {dt} < {now_utc}"
 
-    @pytest.mark.skip('#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures')
+    #@pytest.mark.skip('#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures')
     @pytest.mark.asyncio
     async def test_get_positions(self, client: CcxtClient, symbol: str):
         await super().test_get_positions(client, symbol)
