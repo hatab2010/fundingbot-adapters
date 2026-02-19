@@ -20,5 +20,4 @@ class KrakenFuturesClient(CcxtClient):
 
     async def set_position_mode(self, *, hedged: bool, symbol: str | None = None,
                                 params: dict[str, Any] | None = None) -> None:
-        if hedged:
-            raise UnsupportedFeatureError(self.EXCHANGE_ID, "setPositionMode", params={})
+        raise UnsupportedFeatureError(self.EXCHANGE_ID, "setPositionMode", params={})

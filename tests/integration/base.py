@@ -80,7 +80,10 @@ class CcxtClientContract:
         expected_leverage = 3
 
         # 1) Инициализация режимов и плеча
-        await client.set_position_mode(hedged=False, symbol=symbol)
+        try:
+            await client.set_position_mode(hedged=False, symbol=symbol)
+        except UnsupportedFeatureError:
+            pass
         await client.set_margin_mode(margin_mode="isolated", symbol=symbol)
         await client.set_leverage(leverage=expected_leverage, symbol=symbol)
 
