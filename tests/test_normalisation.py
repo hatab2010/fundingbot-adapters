@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Test script for KrakenFuturesNormalizationUtils ccxt_to_native method
-"""
+"""Test script for KrakenFuturesNormalizationUtils ccxt_to_native method"""
 
 import os
 import sys
@@ -47,9 +46,9 @@ def test_ccxt_to_native():
 
     error_cases = [
         "XRP/USD",  # Missing :USD part
-        "XRPUSD",   # Missing / separator
+        "XRPUSD",  # Missing / separator
         "XRP:USD",  # Missing / separator in base/quote part
-        "",         # Empty string
+        "",  # Empty string
     ]
 
     for invalid_symbol in error_cases:

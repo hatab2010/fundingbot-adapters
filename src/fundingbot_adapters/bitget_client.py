@@ -76,10 +76,7 @@ class BitgetClient(CcxtClient):
             }
 
         raw_data = await self._exchange.request(
-            "/v2/mix/market/current-fund-rate",
-            ["public", "mix"],
-            "GET",
-            {"productType": "usdt-futures"},
+            "/v2/mix/market/current-fund-rate", ["public", "mix"], "GET", {"productType": "usdt-futures"}
         )
 
         now_utc = datetime.now(UTC)

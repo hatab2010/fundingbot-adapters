@@ -34,11 +34,7 @@ class TestKrakenFuturesClient(CcxtClientContract):
 
         """
         config = CexClientConfig(
-            api_key=KRAKEN_API_KEY,
-            api_secret=KRAKEN_SECRET,
-            password=KRAKEN_PASSWORD,
-            testnet=TESTNET,
-            default_type="swap",
+            api_key=KRAKEN_API_KEY, api_secret=KRAKEN_SECRET, password=KRAKEN_PASSWORD, testnet=TESTNET, default_type="swap"
         )
         client = KrakenFuturesClient(config, verbose=True)
         try:
@@ -48,7 +44,9 @@ class TestKrakenFuturesClient(CcxtClientContract):
 
     # Скипаем тесты, которые будут исправлены позже
 
-    @pytest.mark.skip('ccxt.base.errors.AuthenticationError: krakenfutures {"result":"error","error":"authenticationError","serverTime":"2026-02-08T18:58:16.273Z"}')
+    @pytest.mark.skip(
+        'ccxt.base.errors.AuthenticationError: krakenfutures {"result":"error","error":"authenticationError","serverTime":"2026-02-08T18:58:16.273Z"}'
+    )
     @pytest.mark.asyncio
     async def test_get_trigger_orders(self, client: CcxtClient, symbol: str) -> None:
         await super().test_get_trigger_orders(client, symbol)
@@ -60,20 +58,16 @@ class TestKrakenFuturesClient(CcxtClientContract):
         assert len(data) > 0
         pattern = re.compile(r"^(?P<base>[A-Z0-9]{1,32})\/USD:USD$")
         for item in data:
-            assert pattern.match(item.symbol), (
-                f"symbol не соответствует ^(?P<base>[A-Z0-9]{2, 32})\\/USD:USD$: {item.symbol}"
-            )
+            assert pattern.match(item.symbol), f"symbol не соответствует ^(?P<base>[A-Z0-9]{2, 32})\\/USD:USD$: {item.symbol}"
             dt = getattr(item, "funding_date", None)
             assert dt is not None, "funding_date отсутствует в элементе ответа"
             assert dt.tzinfo is not None, f"funding_date без tzinfo: {dt}"
-            assert dt.tzinfo.utcoffset(dt) == timedelta(0), (
-                f"funding_date должен быть UTC-aware, сейчас({item.symbol}): {dt}"
-            )
+            assert dt.tzinfo.utcoffset(dt) == timedelta(0), f"funding_date должен быть UTC-aware, сейчас({item.symbol}): {dt}"
             assert isinstance(item.funding_rate, Decimal), "funding_rate должен быть Decimal"
             now_utc = datetime.now(UTC)
             assert dt >= now_utc - timedelta(seconds=5), f"funding_date в прошлом: {dt} < {now_utc}"
 
-    @pytest.mark.skip('#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures')
+    @pytest.mark.skip("#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures")
     @pytest.mark.asyncio
     async def test_get_positions(self, client: CcxtClient, symbol: str):
         await super().test_get_positions(client, symbol)

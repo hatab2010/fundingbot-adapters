@@ -96,12 +96,7 @@ class CcxtClientContract:
 
         # 2) Открываем позицию с TP/SL
         await client.create_tpsl_position(
-            symbol=symbol,
-            order_type="market",
-            side="buy",
-            amount=contracts,
-            take_profit=take_profit,
-            stop_loss=stop_loss,
+            symbol=symbol, order_type="market", side="buy", amount=contracts, take_profit=take_profit, stop_loss=stop_loss
         )
 
         # 3) Проверки позиции
@@ -121,11 +116,7 @@ class CcxtClientContract:
 
         # 4) Закрываем позицию рыночным reduceOnly и проверяем, что ордера исчезли
         await client.create_order(
-            symbol=symbol,
-            order_type="market",
-            side="sell",
-            amount=position.contracts,
-            params={"reduceOnly": True, "offset": "close"},
+            symbol=symbol, order_type="market", side="sell", amount=position.contracts, params={"reduceOnly": True, "offset": "close"}
         )
 
         positions_after = await client.get_positions([symbol])
@@ -140,15 +131,11 @@ class CcxtClientContract:
         assert len(data) > 0
         pattern = re.compile(r"^(?P<base>[A-Z0-9]{1,32})\/USDT:USDT$")
         for item in data:
-            assert pattern.match(item.symbol), (
-                f"symbol не соответствует ^(?P<base>[A-Z0-9]{2, 32})\\/USDT:USDT$: {item.symbol}"
-            )
+            assert pattern.match(item.symbol), f"symbol не соответствует ^(?P<base>[A-Z0-9]{2, 32})\\/USDT:USDT$: {item.symbol}"
             dt = getattr(item, "funding_date", None)
             assert dt is not None, "funding_date отсутствует в элементе ответа"
             assert dt.tzinfo is not None, f"funding_date без tzinfo: {dt}"
-            assert dt.tzinfo.utcoffset(dt) == timedelta(0), (
-                f"funding_date должен быть UTC-aware, сейчас({item.symbol}): {dt}"
-            )
+            assert dt.tzinfo.utcoffset(dt) == timedelta(0), f"funding_date должен быть UTC-aware, сейчас({item.symbol}): {dt}"
             assert isinstance(item.funding_rate, Decimal), "funding_rate должен быть Decimal"
             now_utc = datetime.now(UTC)
             assert dt >= now_utc - timedelta(seconds=5), f"funding_date в прошлом: {dt} < {now_utc}"
@@ -224,7 +211,6 @@ class CcxtClientContract:
 
             data_without_position = await client.get_positions([symbol])
             assert len(data_without_position) == 0
-
 
     @pytest.mark.asyncio
     async def test_double_init_params(self, client: CcxtClient, symbol: str):

@@ -221,47 +221,22 @@ $env:KRAKEN_API_KEY
 Рекомендуемый рабочий процесс:
 
 ```powershell
-# 1. Активировать окружение
+# Активировать окружение
 .\venv\Scripts\Activate.ps1
 
-# 2. Применить переменные окружения
-.\scripts\ApplyDotEnv.ps1
-
-# 3. Проверить код
+# Проверить код
 poetry run ruff check
 
-# 4. Исправить автоматически исправимые ошибки
+# Исправить автоматически исправимые ошибки
 poetry run ruff check --fix
 
-# 5. Отформатировать код
+# Отформатировать код
 poetry run ruff format
 
-# 6. Запустить тесты
+# Запустить тесты
 poetry run pytest -q
 
-# 7. Финальная проверка
+# Финальная проверка
 poetry run ruff check
 ```
 
-#### Настройка IDE
-
-Для VS Code рекомендуется установить расширение "Ruff" для автоматической проверки кода во время разработки.
-
-#### Полезные алиасы для PowerShell
-
-Добавьте в ваш PowerShell профиль (`$PROFILE`):
-
-```powershell
-function ruff-check { poetry run ruff check $args }
-function ruff-fix { poetry run ruff check --fix $args }
-function ruff-format { poetry run ruff format $args }
-function activate-venv { .\venv\Scripts\Activate.ps1 }
-```
-
-После этого можно использовать короткие команды:
-```powershell
-activate-venv
-ruff-check
-ruff-fix
-ruff-format
-```
