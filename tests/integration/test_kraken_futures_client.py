@@ -1,16 +1,15 @@
+import re
 from collections.abc import AsyncIterator
-from datetime import timedelta, datetime, UTC
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-import re
-
-from fundingbot_sdk.toolkit.client_base import CcxtClient
 from tests.integration.base import CcxtClientContract, CexClientPort
 
 from config import KRAKEN_API_KEY, KRAKEN_PASSWORD, KRAKEN_SECRET, TESTNET
 from fundingbot_adapters.kraken_futures_client import KrakenFuturesClient
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
+from fundingbot_sdk.toolkit.client_base import CcxtClient
 
 
 class TestKrakenFuturesClient(CcxtClientContract):
@@ -54,7 +53,7 @@ class TestKrakenFuturesClient(CcxtClientContract):
     async def test_get_trigger_orders(self, client: CcxtClient, symbol: str) -> None:
         await super().test_get_trigger_orders(client, symbol)
 
-    @pytest.mark.skip('ccxt.base.errors.BadSymbol: krakenfutures does not have market symbol FI_BTCUSD_230630')
+    @pytest.mark.skip("ccxt.base.errors.BadSymbol: krakenfutures does not have market symbol FI_BTCUSD_230630")
     @pytest.mark.asyncio
     async def test_get_funding_usdt_rates(self, client: CcxtClient) -> None:
         data = await client.get_funding_usdt_rates()
@@ -79,17 +78,17 @@ class TestKrakenFuturesClient(CcxtClientContract):
     async def test_get_positions(self, client: CcxtClient, symbol: str):
         await super().test_get_positions(client, symbol)
 
-    @pytest.mark.skip('#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures')
+    @pytest.mark.skip("#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures")
     @pytest.mark.asyncio
     async def test_close_positions(self, client: CcxtClient, symbol: str):
         await super().test_close_positions(client, symbol)
 
-    @pytest.mark.skip('#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures')
+    @pytest.mark.skip("#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures")
     @pytest.mark.asyncio
     async def test_tpsl_lifecycle_asserts(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
         await super().test_tpsl_lifecycle_asserts(client, symbol, amount)
 
-    @pytest.mark.skip('#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures')
+    @pytest.mark.skip("#17 fundingbot_sdk.contracts.errors.PositionUnavailableError: Нет позиции для XRP/USD:USD на krakenfutures")
     @pytest.mark.asyncio
     async def test_full_cycle(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
         await super().test_full_cycle(client, symbol, amount)
@@ -97,4 +96,3 @@ class TestKrakenFuturesClient(CcxtClientContract):
     @pytest.mark.asyncio
     async def test_double_init_params(self, client: CcxtClient, symbol: str) -> None:
         await super().test_double_init_params(client, symbol)
-
