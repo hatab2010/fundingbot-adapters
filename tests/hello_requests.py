@@ -1,35 +1,33 @@
 import base64
 import hashlib
 import hmac
-import time
 import json
+import time
 from urllib.parse import urlencode
 
-import ccxt
 import requests
 from setuptools.msvc import environ
 
-API_KEY = environ.get('KRAKEN_API_KEY')
-API_SECRET = environ.get('KRAKEN_SECRET')
+API_KEY = environ.get("KRAKEN_API_KEY")
+API_SECRET = environ.get("KRAKEN_SECRET")
 
 BASE_URL = "https://futures.kraken.com/derivatives/api/v3"
 
 
 def create_spot_signature(path: str, nonce: str, postdata: str) -> str:
     """Create signature for Spot API"""
-    encoded = (nonce + postdata).encode('utf-8')
-    message = path.encode('utf-8') + hashlib.sha256(encoded).digest()
+    encoded = (nonce + postdata).encode("utf-8")
+    message = path.encode("utf-8") + hashlib.sha256(encoded).digest()
     signature = hmac.new(
         base64.b64decode(API_SECRET),
         message,
         hashlib.sha512
     ).digest()
-    return base64.b64encode(signature).decode('utf-8')
+    return base64.b64encode(signature).decode("utf-8")
 
 
 def sign_kraken_futures(path, body):
-    """
-    См. https://docs.kraken.com/api/docs/guides/spot-rest-auth#setting-the-api-sign-parameter
+    """См. https://docs.kraken.com/api/docs/guides/spot-rest-auth#setting-the-api-sign-parameter
     """
     # nonce в миллисекундах
     nonce = str(int(time.time() * 1000))
@@ -45,8 +43,7 @@ def sign_kraken_futures(path, body):
 
 
 def set_margin_mode(symbol: str, mode: str, max_leverage: float | None = None):
-    """
-    Устанавливает margin mode для контракта:
+    """Устанавливает margin mode для контракта:
     mode: "cross" или "isolated"
     Если передан max_leverage -> режим будет isolated.[web:1]
     """
@@ -82,29 +79,29 @@ def set_margin_mode(symbol: str, mode: str, max_leverage: float | None = None):
 
 def create_futures_signature(endpoint: str, nonce: str, postdata: str) -> str:
     message = postdata + nonce + endpoint
-    sha256_hash = hashlib.sha256(message.encode('utf-8')).digest()
+    sha256_hash = hashlib.sha256(message.encode("utf-8")).digest()
     signature = hmac.new(
         base64.b64decode(API_SECRET),
         sha256_hash,
         hashlib.sha512
     ).digest()
-    return base64.b64encode(signature).decode('utf-8')
+    return base64.b64encode(signature).decode("utf-8")
 
 
 if __name__ == "__main__":
     nonce = str(int(time.time() * 1000))
-    body_dict = {'symbol': 'PF_XBTUSD', 'maxLeverage': 3, }
-    body = json.dumps(body_dict, separators=(',', ':'))
+    body_dict = {"symbol": "PF_XBTUSD", "maxLeverage": 3}
+    body = json.dumps(body_dict, separators=(",", ":"))
 
     headers = {
         "APIKey": API_KEY,
         "Nonce": nonce,
-        "Authent": create_futures_signature('/api/v3/leveragepreferences', nonce, urlencode(body_dict)),
+        "Authent": create_futures_signature("/api/v3/leveragepreferences", nonce, urlencode(body_dict)),
         "Content-Type": "application/json",
     }
 
     response = requests.put(
-        'https://demo-futures.kraken.com/derivatives/api/v3/leveragepreferences',
+        "https://demo-futures.kraken.com/derivatives/api/v3/leveragepreferences",
         headers=headers,
         params=body_dict
     )

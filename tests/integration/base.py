@@ -1,8 +1,7 @@
 import re
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import AsyncIterator
 
 import pytest
 
@@ -73,7 +72,7 @@ class CcxtClientContract:
             await client.set_position_mode(hedged=False, symbol=symbol)
         except UnsupportedFeatureError:
             pass
-        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={'leverage': 3})
+        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 3})
         await client.set_leverage(leverage=expected_leverage, symbol=symbol)
 
         # Подготовка размеров
@@ -177,7 +176,7 @@ class CcxtClientContract:
             await client.set_position_mode(hedged=False, symbol=symbol)
         except UnsupportedFeatureError:
             pass
-        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={'leverage': 2})
+        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 2})
 
         leverage_by_side = {"buy": 2, "sell": 4}
 
