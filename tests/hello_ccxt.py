@@ -19,17 +19,12 @@ def create_spot_signature(path: str, nonce: str, postdata: str) -> str:
     """Create signature for Spot API"""
     encoded = (nonce + postdata).encode("utf-8")
     message = path.encode("utf-8") + hashlib.sha256(encoded).digest()
-    signature = hmac.new(
-        base64.b64decode(API_SECRET),
-        message,
-        hashlib.sha512
-    ).digest()
+    signature = hmac.new(base64.b64decode(API_SECRET), message, hashlib.sha512).digest()
     return base64.b64encode(signature).decode("utf-8")
 
 
 def sign_kraken_futures(path, body):
-    """См. https://docs.kraken.com/api/docs/guides/spot-rest-auth#setting-the-api-sign-parameter
-    """
+    """См. https://docs.kraken.com/api/docs/guides/spot-rest-auth#setting-the-api-sign-parameter"""
     # nonce в миллисекундах
     nonce = str(int(time.time() * 1000))
 
@@ -68,10 +63,7 @@ def set_margin_mode(symbol: str, mode: str, max_leverage: float | None = None):
 
     body = json.dumps(payload)
 
-    headers = sign_kraken_futures(
-        path=path,
-        body=body,
-    )
+    headers = sign_kraken_futures(path=path, body=body)
 
     resp = requests.put(url, headers=headers, data=body, timeout=10)
     resp.raise_for_status()
@@ -81,11 +73,7 @@ def set_margin_mode(symbol: str, mode: str, max_leverage: float | None = None):
 def create_futures_signature(endpoint: str, nonce: str, postdata: str) -> str:
     message = postdata + nonce + endpoint
     sha256_hash = hashlib.sha256(message.encode("utf-8")).digest()
-    signature = hmac.new(
-        base64.b64decode(API_SECRET),
-        sha256_hash,
-        hashlib.sha512
-    ).digest()
+    signature = hmac.new(base64.b64decode(API_SECRET), sha256_hash, hashlib.sha512).digest()
     return base64.b64encode(signature).decode("utf-8")
 
 
@@ -106,14 +94,9 @@ if __name__ == "__main__":
         "secret": API_SECRET,
         "sandbox": True,  # для demo
         "enableRateLimit": True,
-            # "uid": config.uid,
-            "options": {"defaultType": "swap"},
-        })
+        # "uid": config.uid,
+        "options": {"defaultType": "swap"},
+    })
 
-    res = exchange.request(
-            "leveragepreferences",
-            "public",
-            method="PUT",
-            params=params_dict,
-            headers=headers)
+    res = exchange.request("leveragepreferences", "public", method="PUT", params=params_dict, headers=headers)
     print(res)
