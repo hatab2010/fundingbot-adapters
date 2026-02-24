@@ -59,8 +59,7 @@ class KrakenFuturesClient(CcxtClient):
         if config.testnet:
             self.futures_base_url = "https://demo-futures.kraken.com/derivatives/api/v3"
 
-    async def set_position_mode(self, *, hedged: bool, symbol: str | None = None,
-                                params: dict[str, Any] | None = None) -> None:
+    async def set_position_mode(self, *, hedged: bool, symbol: str | None = None, params: dict[str, Any] | None = None) -> None:
         raise UnsupportedFeatureError(self.EXCHANGE_ID, "setPositionMode", params={})
 
     async def set_margin_mode(self, *, margin_mode: str, symbol: str | None = None, params: dict[str, Any] | None = None):
@@ -80,13 +79,7 @@ class KrakenFuturesClient(CcxtClient):
 
         headers = await self.create_request_headers(params_dict)
 
-        resp = await self._exchange.request(
-            "leveragepreferences",
-            "public",
-            method="PUT",
-            params=params_dict,
-            headers=headers,
-        )
+        resp = await self._exchange.request("leveragepreferences", "public", method="PUT", params=params_dict, headers=headers)
         if resp["result"] != "success":
             raise UnknownExchangeError()
 
@@ -103,9 +96,5 @@ class KrakenFuturesClient(CcxtClient):
     def create_futures_signature(self, endpoint: str, nonce: str, postdata: str) -> str:
         message = postdata + nonce + endpoint
         sha256_hash = hashlib.sha256(message.encode("utf-8")).digest()
-        signature = hmac.new(
-            base64.b64decode(self._exchange.secret),
-            sha256_hash,
-            hashlib.sha512
-        ).digest()
+        signature = hmac.new(base64.b64decode(self._exchange.secret), sha256_hash, hashlib.sha512).digest()
         return base64.b64encode(signature).decode("utf-8")
