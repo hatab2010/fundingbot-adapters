@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -100,3 +101,8 @@ if __name__ == "__main__":
 
     res = exchange.request("leveragepreferences", "public", method="PUT", params=params_dict, headers=headers)
     print(res)
+
+    symbol = "PF_XRPUSD"  # пример, подставь свой
+
+    unfiltered_orders = exchange.fetch_open_orders(symbol=symbol)
+    print(unfiltered_orders)

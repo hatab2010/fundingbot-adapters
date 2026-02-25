@@ -44,9 +44,9 @@ class TestKrakenFuturesClient(CcxtClientContract):
 
     # Скипаем тесты, которые будут исправлены позже
 
-    @pytest.mark.skip(
-        'ccxt.base.errors.AuthenticationError: krakenfutures {"result":"error","error":"authenticationError","serverTime":"2026-02-08T18:58:16.273Z"}'
-    )
+    #@pytest.mark.skip(
+    #    'ccxt.base.errors.AuthenticationError: krakenfutures {"result":"error","error":"authenticationError","serverTime":"2026-02-08T18:58:16.273Z"}'
+    #)
     @pytest.mark.asyncio
     async def test_get_trigger_orders(self, client: CcxtClient, symbol: str) -> None:
         await super().test_get_trigger_orders(client, symbol)
