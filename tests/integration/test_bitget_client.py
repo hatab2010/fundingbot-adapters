@@ -12,6 +12,16 @@ class TestBitgetClient(CcxtClientContract):
     """Интеграционный контракт для клиента Bitget."""
 
     @pytest.fixture
+    def symbol(self) -> str:
+        """Символ для тестирования."""
+        return "XRP/USDT:USDT"
+
+    @pytest.fixture
+    def btc_symbol(self) -> str:
+        """Символ для тестирования."""
+        return "BTC/USDT:USDT"
+
+    @pytest.fixture
     async def client(self) -> AsyncIterator[CexClientPort]:
         """Выдавать Bitget‑клиент и закрывать соединение после теста.
 
