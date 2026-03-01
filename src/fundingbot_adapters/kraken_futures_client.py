@@ -8,30 +8,34 @@ from urllib.parse import urlencode
 from fundingbot_sdk.contracts.errors import UnknownExchangeError, UnsupportedFeatureError
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
 from fundingbot_sdk.toolkit.client_base import CcxtClient
+from fundingbot_sdk.toolkit.symbol_converter import SymbolConverter
 
 BASE_PATH = "/derivatives/api/v3"
 
 
-class KrakenFuturesNormalizationUtils:
-    def ccxt_to_pf(self, ccxt_symbol: str) -> str:
+class KrakenFuturesSymbolConverter(SymbolConverter):
+    def from_standard_to_native(self, symbol: str) -> str:
         """Convert CCXT symbol format to Kraken native symbol format.
 
         Examples:
-        'XRP/USD:USD' -> 'PF_XRPUSD'
-        'BTC/USD:USD' -> 'PF_XBTUSD'
-        'ETH/USD:USD' -> 'PF_ETHUSD'
+        'XRP/USDT:USD' -> 'PF_XRPUSD'
+        'BTC/USDT:USD' -> 'PF_XBTUSD'
+        'ETH/USDT:USD' -> 'PF_ETHUSD'
 
         """
-        if ":" not in ccxt_symbol:
-            raise ValueError(f"Invalid CCXT swap symbol format: {ccxt_symbol}. Expected format: BASE/QUOTE:SETTLE")
+        if ":" not in symbol:
+            raise ValueError(f"Invalid CCXT swap symbol format: {symbol}. Expected format: BASE/QUOTE:SETTLE")
 
         # Split the symbol to get base/quote part
-        base_quote_part = ccxt_symbol.split(":")[0]  # 'XRP/USD' from 'XRP/USD:USD'
+        base_quote_part = symbol.split(":")[0]  # 'XRP/USD' from 'XRP/USD:USD'
 
         if "/" not in base_quote_part:
-            raise ValueError(f"Invalid CCXT symbol format: {ccxt_symbol}. Expected format: BASE/QUOTE:SETTLE")
+            raise ValueError(f"Invalid CCXT symbol format: {symbol}. Expected format: BASE/QUOTE:SETTLE")
 
         base, quote = base_quote_part.split("/")
+
+        if quote == "USDT":
+            quote = "USD"
 
         # Handle special case: BTC -> XBT conversion for Kraken
         if base == "BTC":
@@ -41,8 +45,32 @@ class KrakenFuturesNormalizationUtils:
         native_symbol = f"PF_{base}{quote}"
         return native_symbol
 
+    def quote_from_stable_coin_to_fiat_if_needed(self, symbol: str) -> str:
+        """
+        Examples:
+        'XRP/USDT:USDT' -> 'XRP/USD:USD'
+        """
+        if ":" not in symbol:
+            raise ValueError(f"Invalid CCXT swap symbol format: {symbol}. Expected format: BASE/QUOTE:SETTLE")
 
-NORMALIZATION_UTILS = KrakenFuturesNormalizationUtils()
+        # Split the symbol to get base/quote part
+        base_quote_part, settle = symbol.split(":")  # 'XRP/USD' from 'XRP/USD:USD'
+
+        if "/" not in base_quote_part:
+            raise ValueError(f"Invalid CCXT symbol format: {symbol}. Expected format: BASE/QUOTE:SETTLE")
+
+        base, quote = base_quote_part.split("/")
+
+        if quote == "USDT":
+            quote = "USD"
+
+        if settle == "USDT":
+            settle = "USD"
+
+        return f"{base}/{quote}:{settle}"
+
+
+KRAKEN_FUTURES_SYMBOL_CONVERTER = KrakenFuturesSymbolConverter()
 
 
 class KrakenFuturesClient(CcxtClient):
@@ -59,12 +87,17 @@ class KrakenFuturesClient(CcxtClient):
         if config.testnet:
             self.futures_base_url = "https://demo-futures.kraken.com/derivatives/api/v3"
 
+    def get_symbol_converter(self) -> SymbolConverter:
+        return KRAKEN_FUTURES_SYMBOL_CONVERTER
+
     async def set_position_mode(self, *, hedged: bool, symbol: str | None = None, params: dict[str, Any] | None = None) -> None:
         raise UnsupportedFeatureError(self.EXCHANGE_ID, "setPositionMode", params={})
 
     async def set_margin_mode(self, *, margin_mode: str, symbol: str | None = None, params: dict[str, Any] | None = None):
         # Согласно docs: можно задать symbol, marginMode и/или maxLeverage.[web:1]
-        params_dict = {"symbol": NORMALIZATION_UTILS.ccxt_to_pf(symbol)}
+        symbol_converter = self.get_symbol_converter()
+        native_symbol = symbol_converter.from_standard_to_native(symbol_converter.quote_from_stable_coin_to_fiat_if_needed(symbol))
+        params_dict = {"symbol": native_symbol}
         # params = {"symbol": symbol}
 
         # Если явно указать режим
