@@ -16,16 +16,6 @@ class TestKrakenFuturesClient(CcxtClientContract):
     """Интеграционный контракт для клиента Kraken."""
 
     @pytest.fixture
-    def symbol(self) -> str:
-        """Символ для тестирования."""
-        return "XRP/USD:USD"
-
-    @pytest.fixture
-    def btc_symbol(self) -> str:
-        """Символ для тестирования."""
-        return "BTC/USD:USD"
-
-    @pytest.fixture
     async def client(self) -> AsyncIterator[CexClientPort]:
         """Выдавать Kraken‑клиент и закрывать соединение после теста.
 
@@ -44,13 +34,6 @@ class TestKrakenFuturesClient(CcxtClientContract):
 
     # Скипаем тесты, которые будут исправлены позже
 
-    #@pytest.mark.skip(
-    #    'ccxt.base.errors.AuthenticationError: krakenfutures {"result":"error","error":"authenticationError","serverTime":"2026-02-08T18:58:16.273Z"}'
-    #)
-    @pytest.mark.asyncio
-    async def test_get_trigger_orders(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_get_trigger_orders(client, symbol)
-
     @pytest.mark.skip("ccxt.base.errors.BadSymbol: krakenfutures does not have market symbol FI_BTCUSD_230630")
     @pytest.mark.asyncio
     async def test_get_funding_usdt_rates(self, client: CcxtClient) -> None:
@@ -67,16 +50,12 @@ class TestKrakenFuturesClient(CcxtClientContract):
             now_utc = datetime.now(UTC)
             assert dt >= now_utc - timedelta(seconds=5), f"funding_date в прошлом: {dt} < {now_utc}"
 
-    @pytest.mark.skip("#18 AssertionError: assert position.hedged is False")
+    @pytest.mark.skip("#18 ccxt.base.errors.BadSymbol: krakenfutures does not have market symbol XRP/USDT:USDT")
     @pytest.mark.asyncio
     async def test_tpsl_lifecycle_asserts(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
         await super().test_tpsl_lifecycle_asserts(client, symbol, amount)
 
-    @pytest.mark.skip("#18 AssertionError: assert position.hedged is False")
+    @pytest.mark.skip("#18 ccxt.base.errors.BadSymbol: krakenfutures does not have market symbol XRP/USDT:USDT")
     @pytest.mark.asyncio
     async def test_full_cycle(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
         await super().test_full_cycle(client, symbol, amount)
-
-    @pytest.mark.asyncio
-    async def test_double_init_params(self, client: CcxtClient, symbol: str) -> None:
-        await super().test_double_init_params(client, symbol)

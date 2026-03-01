@@ -7,12 +7,12 @@ import sys
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
-from fundingbot_adapters.kraken_futures_client import KrakenFuturesNormalizationUtils
+from fundingbot_adapters.kraken_futures_client import KrakenFuturesSymbolConverter
 
 
 def test_ccxt_to_native():
     """Test the ccxt_to_native conversion method"""
-    utils = KrakenFuturesNormalizationUtils()
+    converter = KrakenFuturesSymbolConverter()
 
     # Test cases based on the documentation and example
     test_cases = [
@@ -30,7 +30,7 @@ def test_ccxt_to_native():
 
     for ccxt_symbol, expected_kraken in test_cases:
         try:
-            result = utils.ccxt_to_pf(ccxt_symbol)
+            result = converter.from_standard_to_native(ccxt_symbol)
             if result == expected_kraken:
                 print(f"✅ {ccxt_symbol} -> {result}")
             else:
@@ -53,7 +53,7 @@ def test_ccxt_to_native():
 
     for invalid_symbol in error_cases:
         try:
-            result = utils.ccxt_to_pf(invalid_symbol)
+            result = converter.from_standard_to_native(invalid_symbol)
             print(f"❌ {invalid_symbol} -> {result} (should have raised error)")
             all_passed = False
         except ValueError as e:
