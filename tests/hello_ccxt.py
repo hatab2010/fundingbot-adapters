@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import hashlib
 import hmac
@@ -7,68 +6,12 @@ import time
 from urllib.parse import urlencode
 
 import ccxt
-import requests
 from setuptools.msvc import environ
 
 API_KEY = environ.get("KRAKEN_API_KEY")
 API_SECRET = environ.get("KRAKEN_SECRET")
 
 BASE_URL = "https://futures.kraken.com/derivatives/api/v3"
-
-
-def create_spot_signature(path: str, nonce: str, postdata: str) -> str:
-    """Create signature for Spot API"""
-    encoded = (nonce + postdata).encode("utf-8")
-    message = path.encode("utf-8") + hashlib.sha256(encoded).digest()
-    signature = hmac.new(base64.b64decode(API_SECRET), message, hashlib.sha512).digest()
-    return base64.b64encode(signature).decode("utf-8")
-
-
-def sign_kraken_futures(path, body):
-    """См. https://docs.kraken.com/api/docs/guides/spot-rest-auth#setting-the-api-sign-parameter"""
-    # nonce в миллисекундах
-    nonce = str(int(time.time() * 1000))
-
-    headers = {
-        "APIKey": API_KEY,
-        "Nonce": nonce,
-        "Authent": create_futures_signature(path, nonce, body),
-        "Content-Type": "application/json",
-    }
-
-    return headers
-
-
-def set_margin_mode(symbol: str, mode: str, max_leverage: float | None = None):
-    """Устанавливает margin mode для контракта:
-    mode: "cross" или "isolated"
-    Если передан max_leverage -> режим будет isolated.[web:1]
-    """
-    path = "/leveragepreferences"
-    url = BASE_URL + path
-
-    # Согласно docs: можно задать symbol, marginMode и/или maxLeverage.[web:1]
-    payload = {"symbol": symbol}
-
-    # Если явно указать режим
-    if mode.lower() == "cross":
-        payload["marginMode"] = "cross"
-    elif mode.lower() == "isolated":
-        payload["marginMode"] = "isolated"
-    else:
-        raise ValueError("mode must be 'cross' or 'isolated'")
-
-    # Если хотим задать максимальное плечо (переводит в isolated)
-    if max_leverage is not None:
-        payload["maxLeverage"] = max_leverage
-
-    body = json.dumps(payload)
-
-    headers = sign_kraken_futures(path=path, body=body)
-
-    resp = requests.put(url, headers=headers, data=body, timeout=10)
-    resp.raise_for_status()
-    return resp.json()
 
 
 def create_futures_signature(endpoint: str, nonce: str, postdata: str) -> str:
@@ -99,10 +42,19 @@ if __name__ == "__main__":
         "options": {"defaultType": "swap"},
     })
 
-    res = exchange.request("leveragepreferences", "public", method="PUT", params=params_dict, headers=headers)
-    print(res)
+    symbol = "PF_XRPUSD"  # пример, подставь свой
 
-    symbol = "PF_XBTUSD"  # пример, подставь свой
+    ticker = exchange.fetch_ticker(symbol)
+    take_profit = ticker["last"] * 1.2
+    stop_loss = ticker["last"] * 0.9
+
+    data = exchange.create_order(
+        symbol=symbol,
+        side="buy",
+        type="market",
+        amount=5,
+        params={"stopPrice": take_profit, "limitPrice": stop_loss},
+    )
 
     unfiltered_orders = exchange.fetch_open_orders(symbol=symbol)
     print(unfiltered_orders)

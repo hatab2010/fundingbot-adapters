@@ -54,8 +54,3 @@ class TestKrakenFuturesClient(CcxtClientContract):
     @pytest.mark.asyncio
     async def test_tpsl_lifecycle_asserts(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
         await super().test_tpsl_lifecycle_asserts(client, symbol, amount)
-
-    @pytest.mark.skip("#18 ccxt.base.errors.BadSymbol: krakenfutures does not have market symbol XRP/USDT:USDT")
-    @pytest.mark.asyncio
-    async def test_full_cycle(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
-        await super().test_full_cycle(client, symbol, amount)

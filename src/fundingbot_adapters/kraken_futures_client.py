@@ -2,11 +2,12 @@ import base64
 import hashlib
 import hmac
 import time
-from typing import Any
+from typing import Any, Sequence, override
 from urllib.parse import urlencode
 
 from fundingbot_sdk.contracts.errors import UnknownExchangeError, UnsupportedFeatureError
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
+from fundingbot_sdk.contracts.protocols import PositionProtocol
 from fundingbot_sdk.toolkit.client_base import CcxtClient
 from fundingbot_sdk.toolkit.symbol_converter import SymbolConverter
 
@@ -69,6 +70,30 @@ class KrakenFuturesSymbolConverter(SymbolConverter):
 
         return f"{base}/{quote}:{settle}"
 
+    def quote_from_fiat_to_stable_coin_if_needed(self, symbol: str) -> str:
+        """
+        Examples:
+        'XRP/USDT:USDT' -> 'XRP/USD:USD'
+        """
+        if ":" not in symbol:
+            raise ValueError(f"Invalid CCXT swap symbol format: {symbol}. Expected format: BASE/QUOTE:SETTLE")
+
+        # Split the symbol to get base/quote part
+        base_quote_part, settle = symbol.split(":")  # 'XRP/USD' from 'XRP/USD:USD'
+
+        if "/" not in base_quote_part:
+            raise ValueError(f"Invalid CCXT symbol format: {symbol}. Expected format: BASE/QUOTE:SETTLE")
+
+        base, quote = base_quote_part.split("/")
+
+        if quote == "USD":
+            quote = "USDT"
+
+        if settle == "USD":
+            settle = "USDT"
+
+        return f"{base}/{quote}:{settle}"
+
 
 KRAKEN_FUTURES_SYMBOL_CONVERTER = KrakenFuturesSymbolConverter()
 
@@ -87,12 +112,15 @@ class KrakenFuturesClient(CcxtClient):
         if config.testnet:
             self.futures_base_url = "https://demo-futures.kraken.com/derivatives/api/v3"
 
+    @override
     def get_symbol_converter(self) -> SymbolConverter:
         return KRAKEN_FUTURES_SYMBOL_CONVERTER
 
+    @override
     async def set_position_mode(self, *, hedged: bool, symbol: str | None = None, params: dict[str, Any] | None = None) -> None:
         raise UnsupportedFeatureError(self.EXCHANGE_ID, "setPositionMode", params={})
 
+    @override
     async def set_margin_mode(self, *, margin_mode: str, symbol: str | None = None, params: dict[str, Any] | None = None):
         # Согласно docs: можно задать symbol, marginMode и/или maxLeverage.[web:1]
         symbol_converter = self.get_symbol_converter()
@@ -115,6 +143,14 @@ class KrakenFuturesClient(CcxtClient):
         resp = await self._exchange.request("leveragepreferences", "public", method="PUT", params=params_dict, headers=headers)
         if resp["result"] != "success":
             raise UnknownExchangeError()
+    #
+    # @override
+    # async def get_positions(self, symbols: list[str], params: dict[str, Any] | None = None) -> Sequence[PositionProtocol]:
+    #     positions = await super().get_positions(symbols, params)
+    #     for position in positions:
+    #         if position.hedged is None:
+    #             position.hedged = False
+    #     return positions
 
     async def create_request_headers(self, params_dict: dict[str, Any]) -> dict[str, str]:
         nonce = str(int(time.time() * 1000))
