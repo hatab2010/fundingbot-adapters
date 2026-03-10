@@ -2,16 +2,15 @@ import base64
 import hashlib
 import hmac
 import time
-from typing import Any, override
 from decimal import Decimal
-from typing import Any, Sequence, override
+from typing import Any, override
 from urllib.parse import urlencode
 
 from pydantic import ValidationError
 
-from fundingbot_sdk.contracts.errors import UnknownExchangeError, UnsupportedFeatureError, OrderUnavailableError
+from fundingbot_sdk.contracts.errors import OrderUnavailableError, UnknownExchangeError, UnsupportedFeatureError
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
-from fundingbot_sdk.contracts.protocols import PositionProtocol, OrderEntityProtocol
+from fundingbot_sdk.contracts.protocols import OrderEntityProtocol
 from fundingbot_sdk.toolkit.client_base import CcxtClient
 from fundingbot_sdk.toolkit.symbol_converter import SymbolConverter
 
@@ -179,13 +178,12 @@ class KrakenFuturesClient(CcxtClient):
 
     async def _create_request_headers(self, short_url_path: str, params_dict: dict[str, Any]) -> dict[str, str]:
         nonce = str(int(time.time() * 1000))
-        headers = {
+        return {
             "APIKey": self._exchange.apiKey,
             "Nonce": nonce,
             "Authent": self._create_futures_signature("/api/v3/" + short_url_path, nonce, urlencode(params_dict)),
             "Content-Type": "application/json",
         }
-        return headers
 
     def _create_futures_signature(self, endpoint: str, nonce: str, postdata: str) -> str:
         message = postdata + nonce + endpoint
@@ -193,6 +191,7 @@ class KrakenFuturesClient(CcxtClient):
         signature = hmac.new(base64.b64decode(self._exchange.secret), sha256_hash, hashlib.sha512).digest()
         return base64.b64encode(signature).decode("utf-8")
 
+    @override
     async def create_tpsl_position(
         self,
         *,
@@ -210,17 +209,17 @@ class KrakenFuturesClient(CcxtClient):
         await self._exchange.create_order(
             fiat_quote_symbol,
             "stp",
-            self.against_side(side),
+            self._against_side(side),
             amount=amount,
-            params={'stopPrice': stop_loss, 'reduceOnly': True},
+            params={"stopPrice": stop_loss, "reduceOnly": True},
         )
 
         await self._exchange.create_order(
             fiat_quote_symbol,
             "take_profit",
-            self.against_side(side),
+            self._against_side(side),
             amount=amount,
-            params={'stopPrice': take_profit, 'reduceOnly': True},
+            params={"stopPrice": take_profit, "reduceOnly": True},
         )
 
         try:
@@ -229,12 +228,10 @@ class KrakenFuturesClient(CcxtClient):
             raise OrderUnavailableError(symbol=symbol, exchange=self.cex_id) from e
 
     @staticmethod
-    def against_side(side):
+    def _against_side(side: str) -> str:
         if side == "buy":
             return "sell"
-        elif side == "sell":
+        if side == "sell":
             return "buy"
-        else:
-            raise ValueError("Side must be 'buy' or 'sell'.")
-
-
+        error_message = "Side must be 'buy' or 'sell'."
+        raise ValueError(error_message)

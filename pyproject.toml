@@ -27,9 +27,9 @@ build-backend = "poetry_dynamic_versioning.backend"
 line-length = 140
 target-version = "py312"
 src = ["src", "submodules/fundingbot-sdk/src"]
-select = ["ALL"]
-ignore = [
-  "D203", "ANN101", "ANN102", "ERA001", "COM812", "INP001", "PLR0913", "PLR0917", "TC001", "D107",
+lint.select = ["ALL"]
+lint.ignore = [
+  "D203", "D213", "ERA001", "COM812", "INP001", "PLR0913", "PLR0917", "TC001", "D107",
   "RUF001", "RUF002", "RUF003", "D100", "ISC001", "ISC002", "N805", "PLR0904", "CPY001", "DOC201"
 ]
 exclude = [
