@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from fundingbot_sdk.contracts.errors import OrderUnavailableError, UnknownExchangeError, UnsupportedFeatureError
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
 from fundingbot_sdk.contracts.protocols import OrderEntityProtocol
-from fundingbot_sdk.toolkit.client_base import CcxtClient
+from fundingbot_sdk.toolkit.client_base import CcxtClient, rate_limited
 from fundingbot_sdk.toolkit.symbol_converter import SymbolConverter
 
 BASE_PATH = "/derivatives/api/v3"
@@ -192,6 +192,7 @@ class KrakenFuturesClient(CcxtClient):
         return base64.b64encode(signature).decode("utf-8")
 
     @override
+    @rate_limited(3)
     async def create_tpsl_position(
         self,
         *,
