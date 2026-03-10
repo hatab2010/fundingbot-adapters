@@ -49,3 +49,10 @@ class TestKrakenFuturesClient(CcxtClientContract):
             assert isinstance(item.funding_rate, Decimal), "funding_rate должен быть Decimal"
             now_utc = datetime.now(UTC)
             assert dt >= now_utc - timedelta(seconds=5), f"funding_date в прошлом: {dt} < {now_utc}"
+
+    async def test_get_positions(self, client: CcxtClient, symbol: str):
+        return await super().test_get_positions(client, symbol)
+
+
+
+

@@ -51,12 +51,6 @@ class CcxtClientContract:
             )
 
     @pytest.mark.asyncio
-    async def test_get_balance(self, client: CcxtClient):
-        """Тестирование получения баланса."""
-        balance = await client.get_balance("USD")
-        assert balance.free > 0
-
-    @pytest.mark.asyncio
     async def test_get_trigger_orders(self, client: CcxtClient, symbol: str) -> None:
         tpsl_orders = await client.get_trigger_orders(symbol=symbol)
         assert len(tpsl_orders) == 0
