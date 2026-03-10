@@ -2,12 +2,15 @@ import base64
 import hashlib
 import hmac
 import time
+from decimal import Decimal
 from typing import Any, Sequence, override
 from urllib.parse import urlencode
 
-from fundingbot_sdk.contracts.errors import UnknownExchangeError, UnsupportedFeatureError
+from pydantic import ValidationError
+
+from fundingbot_sdk.contracts.errors import UnknownExchangeError, UnsupportedFeatureError, OrderUnavailableError
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
-from fundingbot_sdk.contracts.protocols import PositionProtocol
+from fundingbot_sdk.contracts.protocols import PositionProtocol, OrderEntityProtocol
 from fundingbot_sdk.toolkit.client_base import CcxtClient
 from fundingbot_sdk.toolkit.symbol_converter import SymbolConverter
 
@@ -138,7 +141,7 @@ class KrakenFuturesClient(CcxtClient):
         else:
             raise ValueError("mode must be 'cross' or 'isolated'")
 
-        headers = await self.create_request_headers(params_dict)
+        headers = await self.create_request_headers("leveragepreferences", params_dict)
 
         resp = await self._exchange.request("leveragepreferences", "public", method="PUT", params=params_dict, headers=headers)
         if resp["result"] != "success":
@@ -152,12 +155,12 @@ class KrakenFuturesClient(CcxtClient):
     #             position.hedged = False
     #     return positions
 
-    async def create_request_headers(self, params_dict: dict[str, Any]) -> dict[str, str]:
+    async def create_request_headers(self, short_url_path: str, params_dict: dict[str, Any]) -> dict[str, str]:
         nonce = str(int(time.time() * 1000))
         headers = {
             "APIKey": self._exchange.apiKey,
             "Nonce": nonce,
-            "Authent": self.create_futures_signature("/api/v3/leveragepreferences", nonce, urlencode(params_dict)),
+            "Authent": self.create_futures_signature("/api/v3/" + short_url_path, nonce, urlencode(params_dict)),
             "Content-Type": "application/json",
         }
         return headers
@@ -167,3 +170,49 @@ class KrakenFuturesClient(CcxtClient):
         sha256_hash = hashlib.sha256(message.encode("utf-8")).digest()
         signature = hmac.new(base64.b64decode(self._exchange.secret), sha256_hash, hashlib.sha512).digest()
         return base64.b64encode(signature).decode("utf-8")
+
+    async def create_tpsl_position(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        order_type: str,
+        amount: Decimal,
+        take_profit: Decimal,
+        stop_loss: Decimal,
+        margin_mode: str = "isolated",
+    ) -> OrderEntityProtocol:
+        fiat_quote_symbol = self.get_symbol_converter().quote_from_stable_coin_to_fiat_if_needed(symbol)
+        data = await self._exchange.create_order(symbol=fiat_quote_symbol, side=side, type=order_type, amount=amount)
+
+        await self._exchange.create_order(
+            fiat_quote_symbol,
+            "stp",
+            self.against_side(side),
+            amount=amount,
+            params={'stopPrice': stop_loss, 'reduceOnly': True},
+        )
+
+        await self._exchange.create_order(
+            fiat_quote_symbol,
+            "take_profit",
+            self.against_side(side),
+            amount=amount,
+            params={'stopPrice': take_profit, 'reduceOnly': True},
+        )
+
+        try:
+            return self._create_order_response_adapter.validate_python(data)
+        except ValidationError as e:
+            raise OrderUnavailableError(symbol=symbol, exchange=self.cex_id) from e
+
+    @staticmethod
+    def against_side(side):
+        if side == "buy":
+            return "sell"
+        elif side == "sell":
+            return "buy"
+        else:
+            raise ValueError("Side must be 'buy' or 'sell'.")
+
+

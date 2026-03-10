@@ -91,8 +91,8 @@ class CcxtClientContract:
         contracts = amount / instrument.contract_size
 
         ticker = await client.get_ticker(symbol)
-        take_profit = ticker.last_price * Decimal("1.2")
-        stop_loss = ticker.last_price * Decimal("0.9")
+        take_profit = client.price_to_precision(symbol, ticker.last_price * Decimal("1.2"))
+        stop_loss = client.price_to_precision(symbol, ticker.last_price * Decimal("0.9"))
 
         # 2) Открываем позицию с TP/SL
         await client.create_tpsl_position(

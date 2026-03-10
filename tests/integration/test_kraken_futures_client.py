@@ -49,8 +49,3 @@ class TestKrakenFuturesClient(CcxtClientContract):
             assert isinstance(item.funding_rate, Decimal), "funding_rate должен быть Decimal"
             now_utc = datetime.now(UTC)
             assert dt >= now_utc - timedelta(seconds=5), f"funding_date в прошлом: {dt} < {now_utc}"
-
-    @pytest.mark.skip("#18 ccxt.base.errors.BadSymbol: krakenfutures does not have market symbol XRP/USDT:USDT")
-    @pytest.mark.asyncio
-    async def test_tpsl_lifecycle_asserts(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
-        await super().test_tpsl_lifecycle_asserts(client, symbol, amount)
