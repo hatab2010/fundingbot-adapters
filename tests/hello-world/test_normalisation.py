@@ -7,7 +7,7 @@ import sys
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-from fundingbot_adapters.kraken_futures_client import KrakenFuturesSymbolConverter
+from fundingbot_adapters.kraken_futures_symbol_converter import KrakenFuturesSymbolConverter
 
 
 def test_ccxt_to_native():

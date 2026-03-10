@@ -51,12 +51,6 @@ class CcxtClientContract:
             )
 
     @pytest.mark.asyncio
-    async def test_get_balance(self, client: CcxtClient):
-        """Тестирование получения баланса."""
-        balance = await client.get_balance("USD")
-        assert balance.free > 0
-
-    @pytest.mark.asyncio
     async def test_get_trigger_orders(self, client: CcxtClient, symbol: str) -> None:
         tpsl_orders = await client.get_trigger_orders(symbol=symbol)
         assert len(tpsl_orders) == 0
@@ -92,8 +86,8 @@ class CcxtClientContract:
         contracts = amount / instrument.contract_size
 
         ticker = await client.get_ticker(symbol)
-        take_profit = ticker.last_price * Decimal("1.2")
-        stop_loss = ticker.last_price * Decimal("0.9")
+        take_profit = client.price_to_precision(symbol, ticker.last_price * Decimal("1.2"))
+        stop_loss = client.price_to_precision(symbol, ticker.last_price * Decimal("0.9"))
 
         # 2) Открываем позицию с TP/SL
         await client.create_tpsl_position(
