@@ -1,3 +1,4 @@
+import contextlib
 import re
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime, timedelta
@@ -82,7 +83,7 @@ class CcxtClientContract:
         try:
             await client.set_position_mode(hedged=False, symbol=symbol)
         except UnsupportedFeatureError:
-            pass
+            contextlib.suppress(UnsupportedFeatureError)
         await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 3})
         await client.set_leverage(leverage=expected_leverage, symbol=symbol)
 
@@ -173,7 +174,7 @@ class CcxtClientContract:
         try:
             await client.set_position_mode(hedged=False, symbol=symbol)
         except UnsupportedFeatureError:
-            pass
+            contextlib.suppress(UnsupportedFeatureError)
         await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 2})
 
         leverage_by_side = {"buy": 2, "sell": 4}
@@ -199,7 +200,7 @@ class CcxtClientContract:
             assert position.entry_price > 0
             assert position.notional is None or position.notional > 0
             assert position.symbol == symbol
-            #assert position.symbol == client.get_symbol_converter().quote_from_stable_coin_to_fiat_if_needed(symbol)
+            # assert position.symbol == client.get_symbol_converter().quote_from_stable_coin_to_fiat_if_needed(symbol)
 
             # Закрытие позиции
             await client.create_order(
@@ -231,14 +232,10 @@ class CcxtClientContract:
 
     @pytest.mark.asyncio
     async def test_set_position_mode(self, client: CcxtClient):
-        await client.set_position_mode(hedged=False, symbol=None)
-
-    @pytest.mark.asyncio
-    async def test_set_position_mode(self, client: CcxtClient):
         try:
             await client.set_position_mode(hedged=True, symbol=None)
         except UnsupportedFeatureError:
-            pass
+            contextlib.suppress(UnsupportedFeatureError)
 
     @pytest.mark.asyncio
     async def test_set_margin_mode(self, client: CcxtClient, symbol: str):

@@ -32,6 +32,9 @@ ignore = [
   "D203", "ANN101", "ANN102", "ERA001", "COM812", "INP001", "PLR0913", "PLR0917", "TC001", "D107",
   "RUF001", "RUF002", "RUF003", "D100", "ISC001", "ISC002", "N805", "PLR0904", "CPY001", "DOC201"
 ]
+exclude = [
+  "tests/hello-world",
+]
 preview = true
 
 [tool.ruff.format]
