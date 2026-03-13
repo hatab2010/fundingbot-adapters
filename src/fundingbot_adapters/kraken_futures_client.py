@@ -3,12 +3,11 @@ import hashlib
 import hmac
 import time
 from collections.abc import Sequence
-from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, override, cast, Optional
+from typing import Any, cast, override
 from urllib.parse import urlencode
 
-from pydantic import Field, TypeAdapter, ValidationError, field_validator, model_validator
+from pydantic import Field, TypeAdapter, ValidationError, model_validator
 from pydantic.dataclasses import dataclass as pdc_dataclass
 
 from fundingbot_adapters.kraken_futures_market_response import KrakenFuturesMarketResponse
@@ -55,7 +54,6 @@ class KrakenFuturesFundingRateResponse(ResponseBase):
     @classmethod
     def pair_to_symbol(cls, data: object) -> object:
         """Приводит symbol к виду BASE/USDT:USDT."""
-
         if not isinstance(data, dict):
             return data
 
@@ -157,7 +155,6 @@ class KrakenFuturesClient(CcxtClient):
 
         # Фильтр доступных своп‑инструментов (:USDT) по состоянию рынка.
         active_symbols: set[str] | None = None
-        market_values = self._exchange.markets.values()
         if is_active:
             active_symbols = {
                 KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_fiat_to_stable_coin_if_needed(m.get("symbol"))
@@ -169,7 +166,7 @@ class KrakenFuturesClient(CcxtClient):
         headers = await self._create_request_headers("tickers", params_dict)
         raw_data = await self._exchange.request("tickers", "public", method="GET", params=params_dict, headers=headers)
 
-        now_utc = datetime.now(UTC)
+        # now_utc = datetime.now(UTC)
         parsed: list[KrakenFuturesFundingRateResponse] = []
         for item in raw_data["tickers"]:
             if item.get("fundingRate") is None:

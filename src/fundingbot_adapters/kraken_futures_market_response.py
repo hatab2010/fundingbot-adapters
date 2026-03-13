@@ -28,4 +28,5 @@ class KrakenFuturesMarketResponse(MarketResponse):
     @field_validator("symbol", mode="before")
     @classmethod
     def stable_coin_quote_symbol(cls, v: str) -> str:
+        """Конвертирует из пары с квотрованной криптовалютой в пару с фиатной."""
         return KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_fiat_to_stable_coin_if_needed(v)
