@@ -1,7 +1,4 @@
-import re
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 
 import pytest
 from tests.integration.base import CcxtClientContract, CexClientPort
@@ -32,27 +29,5 @@ class TestKrakenFuturesClient(CcxtClientContract):
         finally:
             await client.close()
 
-    # Скипаем тесты, которые будут исправлены позже
-
-    @pytest.mark.skip("ccxt.base.errors.BadSymbol: krakenfutures does not have market symbol FI_BTCUSD_230630")
-    @pytest.mark.asyncio
-    async def test_get_funding_usdt_rates(self, client: CcxtClient) -> None:
-        data = await client.get_funding_usdt_rates()
-        assert len(data) > 0
-        pattern = re.compile(r"^(?P<base>[A-Z0-9]{1,32})\/USD:USD$")
-        for item in data:
-            assert pattern.match(item.symbol), f"symbol не соответствует ^(?P<base>[A-Z0-9]{2, 32})\\/USD:USD$: {item.symbol}"
-            dt = getattr(item, "funding_date", None)
-            assert dt is not None, "funding_date отсутствует в элементе ответа"
-            assert dt.tzinfo is not None, f"funding_date без tzinfo: {dt}"
-            assert dt.tzinfo.utcoffset(dt) == timedelta(0), f"funding_date должен быть UTC-aware, сейчас({item.symbol}): {dt}"
-            assert isinstance(item.funding_rate, Decimal), "funding_rate должен быть Decimal"
-            now_utc = datetime.now(UTC)
-            assert dt >= now_utc - timedelta(seconds=5), f"funding_date в прошлом: {dt} < {now_utc}"
-
-    async def test_get_positions(self, client: CcxtClient, symbol: str):
-        return await super().test_get_positions(client, symbol)
-
-
-
-
+    async def test_get_funding_usdt_rates(self, client: CcxtClient):
+        return await super().test_get_funding_usdt_rates(client)

@@ -2,24 +2,83 @@ import base64
 import hashlib
 import hmac
 import time
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, override, Sequence
+from typing import Any, override, cast, Optional
 from urllib.parse import urlencode
 
-from pydantic import ValidationError, TypeAdapter
+from pydantic import Field, TypeAdapter, ValidationError, field_validator, model_validator
+from pydantic.dataclasses import dataclass as pdc_dataclass
 
 from fundingbot_adapters.kraken_futures_market_response import KrakenFuturesMarketResponse
 from fundingbot_adapters.kraken_futures_position_info_response import KrakenFuturesPositionInfoResponse
 from fundingbot_adapters.kraken_futures_symbol_converter import KRAKEN_FUTURES_SYMBOL_CONVERTER
-from fundingbot_sdk.contracts.errors import OrderUnavailableError, UnknownExchangeError, UnsupportedFeatureError, \
-    TriggerOrdersUnavailableError
+from fundingbot_sdk.contracts.errors import (
+    FundingRateUnavailableError,
+    OrderUnavailableError,
+    TriggerOrdersUnavailableError,
+    UnknownExchangeError,
+    UnsupportedFeatureError,
+)
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
-from fundingbot_sdk.contracts.protocols import OrderEntityProtocol, TickerProtocol, PositionProtocol, InstrumentProtocol, \
-    TriggerOrderProtocol, FundingProtocol, BalanceProtocol
+from fundingbot_sdk.contracts.protocols import (
+    BalanceProtocol,
+    FundingProtocol,
+    InstrumentProtocol,
+    OrderEntityProtocol,
+    PositionProtocol,
+    TickerProtocol,
+    TriggerOrderProtocol,
+)
+from fundingbot_sdk.schemas.base import ResponseBase
 from fundingbot_sdk.toolkit.client_base import CcxtClient, rate_limited
 from fundingbot_sdk.toolkit.error_mapper import map_sdk_errors
 
 BASE_PATH = "/derivatives/api/v3"
+
+
+# Так как в fetch_funding_rates() мы получаем данные не от ccxt, а raw данные от конкретного биржевого API,
+# то мы не можем использовать FundingRateResponse из fundingbot-sdk,
+# поэтому создаем свой класс для нормализации и валидации данных запроса финансирования для Bitget.
+# Не забываем наследоваться от ResponseBase из fundingbot-sdk и использовать pydantic.dataclasses.
+@pdc_dataclass(slots=True, frozen=True)
+class KrakenFuturesFundingRateResponse(ResponseBase):
+    """Нормализует и валидирует ставку финансирования Bitget для USDT‑свопов."""
+
+    symbol: str = Field(..., validation_alias="symbol", description="Символ инструмента в формате CCXT (:USDT)")
+    exchange: str = Field(..., description="Биржа")
+    funding_rate: Decimal = Field(..., validation_alias="fundingRate", description="Ставка финансирования (доля)")
+    # funding_date: datetime = Field(..., validation_alias="nextUpdate", description="Дата и время выплаты финансирования (UTC)")
+
+    @model_validator(mode="before")
+    @classmethod
+    def pair_to_symbol(cls, data: object) -> object:
+        """Приводит symbol к виду BASE/USDT:USDT."""
+
+        if not isinstance(data, dict):
+            return data
+
+        item: dict[str, Any] = dict(cast("dict[str, Any]", data))
+
+        pair = item.get("pair")
+        if pair is not None:
+            base_cur, quote_cur = pair.split(":")
+            if quote_cur == "USD":
+                quote_cur = "USDT"
+            item["symbol"] = f"{base_cur}/{quote_cur}:{quote_cur}"
+
+        return item
+
+    @field_validator("funding_date", mode="before")
+    def to_datetime(cls, v: str | int | datetime) -> datetime:
+        """Преобразует мс Unix к UTC‑aware datetime."""
+        if isinstance(v, datetime):
+            return v
+        return datetime.fromtimestamp(int(v) / 1000, tz=UTC)
+
+
+KRAKEN_FUTURES_FUNDING_RATE_ADAPTER = TypeAdapter(KrakenFuturesFundingRateResponse)
 
 
 class KrakenFuturesClient(CcxtClient):
@@ -87,6 +146,48 @@ class KrakenFuturesClient(CcxtClient):
     async def get_funding_rate(self, symbol: str) -> FundingProtocol:
         fiat_quote_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol)
         return await super().get_funding_rate(fiat_quote_symbol)
+
+    @rate_limited(10)
+    @map_sdk_errors
+    @override
+    # В ccxt нет реализации fetch_funding_rates() для bitget, поэтому реализуем руками,
+    # переопределяя метод базового класса.
+    async def get_funding_usdt_rates(self, *, is_active: bool = True) -> Sequence[FundingProtocol]:
+        await self._exchange.load_markets()
+
+        # Фильтр доступных своп‑инструментов (:USDT) по состоянию рынка.
+        active_symbols: set[str] | None = None
+        market_values = self._exchange.markets.values()
+        if is_active:
+            active_symbols = {
+                KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_fiat_to_stable_coin_if_needed(m.get("symbol"))
+                for m in self._exchange.markets.values()
+                if (m.get("swap") is True) and m.get("symbol").endswith(":USD") and (m.get("active") is True)
+            }
+
+        params_dict = {}
+        headers = await self._create_request_headers("tickers", params_dict)
+        raw_data = await self._exchange.request("tickers", "public", method="GET", params=params_dict, headers=headers)
+
+        now_utc = datetime.now(UTC)
+        parsed: list[KrakenFuturesFundingRateResponse] = []
+        for item in raw_data["tickers"]:
+            if item.get("fundingRate") is None:
+                continue
+            try:
+                model = KRAKEN_FUTURES_FUNDING_RATE_ADAPTER.validate_python({**item, "exchange": self.EXCHANGE_ID})
+            except ValidationError as e:
+                raise FundingRateUnavailableError(symbol=item.get("symbol"), exchange=self.EXCHANGE_ID) from e
+            # if model.funding_date < now_utc:
+            #     continue
+            if active_symbols is not None and model.symbol not in active_symbols:
+                continue
+            parsed.append(model)
+
+        if not parsed:
+            raise FundingRateUnavailableError(symbol="*/USDT:USDT", exchange=self.EXCHANGE_ID)
+
+        return parsed
 
     @map_sdk_errors
     @override
