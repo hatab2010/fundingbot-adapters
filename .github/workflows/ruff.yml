@@ -3,7 +3,10 @@ name: Ruff
 
 on:
   push:
-    branches: [ dev, main ]
+    branches:
+      - dev
+      - main
+      - 'feature/*'
   pull_request:
 
 jobs:
