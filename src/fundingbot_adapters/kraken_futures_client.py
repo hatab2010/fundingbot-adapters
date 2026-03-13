@@ -70,12 +70,12 @@ class KrakenFuturesFundingRateResponse(ResponseBase):
 
         return item
 
-    @field_validator("funding_date", mode="before")
-    def to_datetime(cls, v: str | int | datetime) -> datetime:
-        """Преобразует мс Unix к UTC‑aware datetime."""
-        if isinstance(v, datetime):
-            return v
-        return datetime.fromtimestamp(int(v) / 1000, tz=UTC)
+    # @field_validator("funding_date", mode="before")
+    # def to_datetime(cls, v: str | int | datetime) -> datetime:
+    #     """Преобразует мс Unix к UTC‑aware datetime."""
+    #     if isinstance(v, datetime):
+    #         return v
+    #     return datetime.fromtimestamp(int(v) / 1000, tz=UTC)
 
 
 KRAKEN_FUTURES_FUNDING_RATE_ADAPTER = TypeAdapter(KrakenFuturesFundingRateResponse)

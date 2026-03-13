@@ -36,6 +36,12 @@ class CcxtClientContract:
         raise NotImplementedError
 
     @pytest.mark.asyncio
+    async def test_get_market_symbols(self, client: CcxtClient):
+        symbols = await client.get_market_symbols()
+        assert len(symbols) > 0
+        assert any(s.endswith("/USDT:USDT") for s in symbols)
+
+    @pytest.mark.asyncio
     async def test_close_positions(self, client: CcxtClient, symbol: str):
         positions = await client.get_positions([symbol])
         if len(positions) == 0:
@@ -97,6 +103,7 @@ class CcxtClientContract:
         # 3) Проверки позиции
         positions = await client.get_positions([symbol])
         assert len(positions) == 1
+        assert positions[0].symbol == symbol
         position = positions[0]
 
         # Проверка плеча и режима позиции (one-way)
