@@ -1,6 +1,8 @@
 from collections.abc import AsyncIterator
 
 import pytest
+
+from fundingbot_sdk.toolkit.client_base import CcxtClient
 from tests.integration.base import CcxtClientContract, CexClientPort
 
 from config import BITGET_API_KEY, BITGET_PASSWORD, BITGET_SECRET, TESTNET

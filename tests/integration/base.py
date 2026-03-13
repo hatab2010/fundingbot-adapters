@@ -128,6 +128,13 @@ class CcxtClientContract:
         assert len(tpsl_orders_after) == 0
 
     @pytest.mark.asyncio
+    async def test_get_funding_rate(self, client: CcxtClient, symbol: str):
+        data = await client.get_funding_rate(symbol=symbol)
+        assert data.funding_rate > -0.01
+        assert data.funding_rate < 0.01
+        assert data.symbol == symbol
+
+    @pytest.mark.asyncio
     async def test_get_funding_usdt_rates(self, client: CcxtClient):
         data = await client.get_funding_usdt_rates()
         assert len(data) > 0
