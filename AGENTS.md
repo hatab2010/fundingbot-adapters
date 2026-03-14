@@ -17,6 +17,6 @@
 
 6) При работе с Python активируй уже созданное виртуальное окружение в папке `./venv`.
 
-7) Знания по особенностям биржи Kraken можно прочитать в файле [KRAKEN_FUTURES_API_RESEARCH.md](docs/KRAKEN_API_RESEARCH.md)
+7) Знания по особенностям биржи Kraken можно прочитать в файле [KRAKEN_FUTURES_API_RESEARCH.md](docs/KRAKEN_FUTURES_API_RESEARCH.md)
 
 8) Перед увыполнением тестов нужно убедиться, установлена ли переменная окружения KRAKEN_API_KEY. Если нет, то нужно применить скрипт `scripts\ApplyDotEnv.ps1`.
