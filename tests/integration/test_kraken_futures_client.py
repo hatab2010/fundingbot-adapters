@@ -30,12 +30,12 @@ class TestKrakenFuturesClient(CcxtClientContract):
         finally:
             await client.close()
 
-    @pytest.mark.skip("#15 funding_date отсутствует в элементе ответа")
+    #@pytest.mark.skip("#15 funding_date отсутствует в элементе ответа")
     @override
     async def test_get_funding_usdt_rates(self, client: CcxtClient):
         return await super().test_get_funding_usdt_rates(client)
 
-    @pytest.mark.skip("#15 Value error, Отсутствует значение даты финансирования")
+    #@pytest.mark.skip("#15 Value error, Отсутствует значение даты финансирования")
     @override
     async def test_get_funding_rate(self, client: CcxtClient, symbol: str):
         return await super().test_get_funding_rate(client, symbol)

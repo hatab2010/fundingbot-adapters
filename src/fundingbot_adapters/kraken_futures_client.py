@@ -12,7 +12,7 @@ from pydantic.dataclasses import dataclass as pdc_dataclass
 
 from fundingbot_adapters.kraken_futures_market_response import KrakenFuturesMarketResponse
 from fundingbot_adapters.kraken_futures_position_info_response import KrakenFuturesPositionInfoResponse
-from fundingbot_adapters.kraken_futures_symbol_converter import KRAKEN_FUTURES_SYMBOL_CONVERTER
+from fundingbot_adapters.kraken_futures_symbol_converter import KrakenFuturesSymbolConverter
 from fundingbot_sdk.contracts.errors import (
     FundingRateUnavailableError,
     OrderUnavailableError,
@@ -100,39 +100,39 @@ class KrakenFuturesClient(CcxtClient):
     @override
     async def get_market_symbols(self) -> list[str]:
         super_result = await super().get_market_symbols()
-        return [KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_fiat_to_stable_coin_if_needed(symbol) for symbol in super_result]
+        return [KrakenFuturesSymbolConverter.quote_from_usd_to_usdt(symbol) for symbol in super_result]
 
     @map_sdk_errors
     @override
     async def get_ticker(self, symbol: str) -> TickerProtocol:
-        fiat_quote_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol)
-        native_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.from_standard_to_native(fiat_quote_symbol)
+        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
+        native_symbol = KrakenFuturesSymbolConverter.from_ccxt_to_kraken(fiat_quote_symbol)
         return await super().get_ticker(native_symbol)
 
     @map_sdk_errors
     @override
     async def get_positions(self, symbols: list[str], params: dict[str, Any] | None = None) -> Sequence[
         PositionProtocol]:
-        fiat_quote_symbols = [KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol) for symbol in symbols]
+        fiat_quote_symbols = [KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol) for symbol in symbols]
         return await super().get_positions(fiat_quote_symbols, params)
 
     @map_sdk_errors
     @override
     async def close_trigger_orders(self, symbol: str, ids: list[str], params: dict[str, Any] | None = None) -> None:
-        fiat_quote_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol)
+        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
         return await super().close_trigger_orders(fiat_quote_symbol, ids, params)
 
     @map_sdk_errors
     @override
     async def get_instrument_info(self, symbol: str) -> InstrumentProtocol:
-        fiat_quote_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol)
+        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
         return await super().get_instrument_info(fiat_quote_symbol)
 
     @map_sdk_errors
     @override
     async def get_trigger_orders(self, symbol: str) -> Sequence[TriggerOrderProtocol]:
-        fiat_quote_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol)
-        native_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.from_standard_to_native(fiat_quote_symbol)
+        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
+        native_symbol = KrakenFuturesSymbolConverter.from_ccxt_to_kraken(fiat_quote_symbol)
         tpsl_orders = await self._exchange.fetch_open_orders(symbol=native_symbol)
         try:
             return self._trigger_order_list_adapter.validate_python(tpsl_orders)
@@ -142,7 +142,7 @@ class KrakenFuturesClient(CcxtClient):
     @map_sdk_errors
     @override
     async def get_funding_rate(self, symbol: str) -> FundingProtocol:
-        fiat_quote_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol)
+        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
         return await super().get_funding_rate(fiat_quote_symbol)
 
     @rate_limited(10)
@@ -157,7 +157,7 @@ class KrakenFuturesClient(CcxtClient):
         active_symbols: set[str] | None = None
         if is_active:
             active_symbols = {
-                KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_fiat_to_stable_coin_if_needed(m.get("symbol"))
+                KrakenFuturesSymbolConverter.quote_from_usd_to_usdt(m.get("symbol"))
                 for m in self._exchange.markets.values()
                 if (m.get("swap") is True) and m.get("symbol").endswith(":USD") and (m.get("active") is True)
             }
@@ -195,8 +195,8 @@ class KrakenFuturesClient(CcxtClient):
     @override
     async def set_margin_mode(self, *, margin_mode: str, symbol: str | None = None, params: dict[str, Any] | None = None) -> None:
         # Согласно docs: можно задать symbol, marginMode и/или maxLeverage.[web:1]
-        fiat_quote_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol)
-        native_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.from_standard_to_native(fiat_quote_symbol)
+        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
+        native_symbol = KrakenFuturesSymbolConverter.from_ccxt_to_kraken(fiat_quote_symbol)
         params_dict = {"symbol": native_symbol}
         # params = {"symbol": symbol}
 
@@ -222,7 +222,7 @@ class KrakenFuturesClient(CcxtClient):
     @override
     async def set_leverage(self, *, leverage: int, symbol: str | None = None,
                            params: dict[str, Any] | None = None) -> None:
-        fiat_quote_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol)
+        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
         return await super().set_leverage(leverage=leverage, symbol=fiat_quote_symbol, params=params)
 
     @rate_limited(3)
@@ -239,7 +239,7 @@ class KrakenFuturesClient(CcxtClient):
         stop_loss: Decimal,
         margin_mode: str = "isolated",
     ) -> OrderEntityProtocol:
-        fiat_quote_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol)
+        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
         data = await self._exchange.create_order(symbol=fiat_quote_symbol, side=side, type=order_type, amount=amount)
 
         await self._exchange.create_order(
@@ -267,13 +267,13 @@ class KrakenFuturesClient(CcxtClient):
     @override
     async def create_order(self, symbol: str, order_type: str, side: str, amount: Decimal, price: Decimal | None = None,
                            params: dict[str, Any] | None = None, margin_mode: str = "isolated") -> OrderEntityProtocol:
-        fiat_quote_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol)
+        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
         return await super().create_order(fiat_quote_symbol, order_type, side, amount, price, params, margin_mode)
 
     @map_sdk_errors
     @override
     def price_to_precision(self, symbol: str, price: Decimal) -> Decimal:
-        fiat_quote_symbol = KRAKEN_FUTURES_SYMBOL_CONVERTER.quote_from_stable_coin_to_fiat_if_needed(symbol)
+        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
         return super().price_to_precision(fiat_quote_symbol, price)
 
     @map_sdk_errors

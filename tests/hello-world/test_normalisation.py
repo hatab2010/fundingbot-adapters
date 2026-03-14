@@ -30,7 +30,7 @@ def test_ccxt_to_native():
 
     for ccxt_symbol, expected_kraken in test_cases:
         try:
-            result = converter.from_standard_to_native(ccxt_symbol)
+            result = converter.from_ccxt_to_kraken(ccxt_symbol)
             if result == expected_kraken:
                 print(f"✅ {ccxt_symbol} -> {result}")
             else:
@@ -53,7 +53,7 @@ def test_ccxt_to_native():
 
     for invalid_symbol in error_cases:
         try:
-            result = converter.from_standard_to_native(invalid_symbol)
+            result = converter.from_ccxt_to_kraken(invalid_symbol)
             print(f"❌ {invalid_symbol} -> {result} (should have raised error)")
             all_passed = False
         except ValueError as e:
