@@ -1,36 +1,14 @@
 # Kraken Futures API Research
 
-## Executive Summary
-
-This research document provides comprehensive analysis for implementing a Kraken Futures API client for perpetual futures trading within the fundingbot ecosystem. The critical finding is that **CCXT's Kraken implementation only supports spot trading** (`'swap': False, 'future': False`) and cannot access perpetual futures or funding rates.
-
-**Key Findings:**
-- Kraken operates separate APIs: Spot API for traditional trading and Futures API for derivatives
-- Standard CCXT Kraken client cannot retrieve funding rates or trade perpetual futures
-- Direct API integration with Kraken Futures API is required
-- Symbol format conversion between Kraken native (`PF_XBTUSD`) and CCXT normalized (`BTC/USD:USD`) is essential
-- Authentication uses HMAC-SHA512 with different signature construction than Bitget
-
-**Implementation Approach:**
-The KrakenClient must override key methods to directly call Kraken Futures API endpoints while maintaining compatibility with the fundingbot-sdk interface.
-
 ## API Structure Comparison (Kraken vs Bitget)
 
 ### Kraken API Architecture
-```
-Spot API:     https://api.kraken.com/0/
-Futures API:  https://futures.kraken.com/derivatives/api/v3/
-```
-
-**Kraken Spot API:**
-- Endpoint: `https://api.kraken.com/0/`
-- Supports: Spot trading only
-- No funding rates available
-- No perpetual futures
-- CCXT compatible
 
 **Kraken Futures API:**
 - Endpoint: `https://futures.kraken.com/derivatives/api/v3/`
+- REST API Guides: https://docs.kraken.com/api/docs/guides/global-intro
+- REST API Reference Documentation: https://docs.kraken.com/api/docs/rest-api/add-order
+- Kraken API Center landing page: https://docs.kraken.com/api/
 - Supports: Perpetual futures, options, funding rates
 - Separate authentication system
 - Not directly supported by CCXT
@@ -86,31 +64,6 @@ headers = {
 }
 ```
 
-### Bitget Authentication (Reference)
-```python
-# Bitget uses different signature construction
-def create_signature(self, timestamp: str, method: str, path: str, body: str) -> str:
-    """
-    Bitget signature: timestamp + method + path + body
-    """
-    message = timestamp + method + path + body
-    signature = hmac.new(
-        self.api_secret.encode('utf-8'),
-        message.encode('utf-8'),
-        hashlib.sha256
-    ).digest()
-    return base64.b64encode(signature).decode('utf-8')
-```
-
-### Key Authentication Differences
-
-| Aspect | Kraken Futures | Bitget |
-|--------|----------------|--------|
-| Hash Algorithm | HMAC-SHA512 | HMAC-SHA256 |
-| Message Format | `postdata + nonce + endpoint` | `timestamp + method + path + body` |
-| Secret Encoding | Base64 decoded | UTF-8 encoded |
-| Header Names | `APIKey`, `Nonce`, `Authent` | `ACCESS-KEY`, `ACCESS-TIMESTAMP`, `ACCESS-SIGN` |
-
 ## Market Data & Symbol Handling
 
 ### Symbol Format Conversion
@@ -127,56 +80,6 @@ PF_SOLUSD    # Solana perpetual future
 BTC/USD:USD  # Bitcoin perpetual future
 ETH/USD:USD  # Ethereum perpetual future
 SOL/USD:USD  # Solana perpetual future
-```
-
-### Symbol Conversion Implementation
-```python
-def kraken_to_ccxt_symbol(self, kraken_symbol: str) -> str:
-    """Convert Kraken Futures symbol to CCXT format"""
-    if not kraken_symbol.startswith('PF_'):
-        raise ValueError(f"Invalid Kraken futures symbol: {kraken_symbol}")
-    
-    # Remove PF_ prefix
-    base_symbol = kraken_symbol[3:]
-    
-    # Handle special cases
-    symbol_map = {
-        'XBTUSD': 'BTC/USD:USD',
-        'ETHUSD': 'ETH/USD:USD',
-        'SOLUSD': 'SOL/USD:USD',
-        # Add more mappings as needed
-    }
-    
-    return symbol_map.get(base_symbol, f"{base_symbol[:-3]}/{base_symbol[-3:]}:{base_symbol[-3:]}")
-
-def ccxt_to_kraken_symbol(self, ccxt_symbol: str) -> str:
-    """Convert CCXT symbol to Kraken Futures format"""
-    if ':' not in ccxt_symbol:
-        raise ValueError(f"Invalid CCXT swap symbol: {ccxt_symbol}")
-    
-    base_quote = ccxt_symbol.split(':')[0]  # BTC/USD from BTC/USD:USD
-    base, quote = base_quote.split('/')
-    
-    # Handle special cases
-    if base == 'BTC':
-        base = 'XBT'
-    
-    return f"PF_{base}{quote}"
-```
-
-### Market Type Detection
-```python
-def is_perpetual_future(self, symbol: str) -> bool:
-    """Check if symbol represents a perpetual future"""
-    # CCXT format check
-    if ':' in symbol and symbol.endswith(':USD'):
-        return True
-    
-    # Kraken format check
-    if symbol.startswith('PF_'):
-        return True
-    
-    return False
 ```
 
 ## Order Management Differences
@@ -200,18 +103,6 @@ POST /derivatives/api/v3/sendorder
 }
 ```
 
-**Bitget Order Placement (Reference):**
-```python
-# Uses CCXT standardized parameters
-order = await exchange.create_order(
-    symbol='BTC/USD:USD',
-    type='limit',
-    side='buy',
-    amount=1,
-    price=50000.0
-)
-```
-
 ### Order Status Mapping
 
 | Kraken Status | CCXT Status | Description |
@@ -221,26 +112,6 @@ order = await exchange.create_order(
 | `filled` | `closed` | Fully executed |
 | `cancelled` | `canceled` | Order cancelled |
 | `rejected` | `rejected` | Order rejected |
-
-### Order Management Implementation
-```python
-async def create_order(self, symbol: str, type: str, side: str, amount: float, price: float = None) -> dict:
-    """Create order using Kraken Futures API"""
-    kraken_symbol = self.ccxt_to_kraken_symbol(symbol)
-    
-    params = {
-        'orderType': 'lmt' if type == 'limit' else 'mkt',
-        'symbol': kraken_symbol,
-        'side': side,
-        'size': int(amount),  # Kraken uses integer sizes
-    }
-    
-    if type == 'limit' and price:
-        params['limitPrice'] = price
-    
-    response = await self._request('POST', '/sendorder', params)
-    return self._parse_order(response)
-```
 
 ## Position & Balance Management
 
@@ -266,47 +137,6 @@ GET /derivatives/api/v3/openpositions
         }
     ]
 }
-```
-
-### Balance Information
-
-**Kraken Futures Balance Endpoint:**
-```
-GET /derivatives/api/v3/accounts
-```
-
-**Response Format:**
-```json
-{
-    "result": "success",
-    "accounts": {
-        "cash": {
-            "balances": {
-                "USD": 10000.50
-            }
-        }
-    }
-}
-```
-
-### Implementation Example
-```python
-async def fetch_positions(self) -> List[dict]:
-    """Fetch open positions from Kraken Futures"""
-    response = await self._request('GET', '/openpositions')
-    positions = []
-    
-    for pos in response.get('openPositions', []):
-        positions.append({
-            'symbol': self.kraken_to_ccxt_symbol(pos['symbol']),
-            'side': pos['side'],
-            'size': pos['size'],
-            'unrealizedPnl': pos['unrealizedPnl'],
-            'entryPrice': pos['entryPrice'],
-            'markPrice': pos['markPrice']
-        })
-    
-    return positions
 ```
 
 ## Funding Rate Implementation
