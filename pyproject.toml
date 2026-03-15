@@ -33,7 +33,7 @@ lint.ignore = [
   "RUF001", "RUF002", "RUF003", "D100", "ISC001", "ISC002", "N805", "PLR0904", "CPY001", "DOC201"
 ]
 exclude = [
-  "tests/hello-world",
+  "tests", "scripts"
 ]
 preview = true
 

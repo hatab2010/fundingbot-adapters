@@ -2,7 +2,7 @@ class KrakenFuturesSymbolConverter:
     """клиент Kraken Futures на базе ccxt для USDT‑свопов."""
 
     @staticmethod
-    def from_ccxt_to_kraken(symbol: str) -> str:  # noqa: PLR6301
+    def from_ccxt_to_kraken(symbol: str) -> str:
         """Convert CCXT symbol format to Kraken symbol format.
 
         Examples:
@@ -41,7 +41,7 @@ class KrakenFuturesSymbolConverter:
         return f"PF_{base}{quote}"
 
     @staticmethod
-    def quote_from_usdt_to_usd(symbol: str) -> str:  # noqa: PLR6301
+    def quote_from_usdt_to_usd(symbol: str) -> str:
         """Конвертирует из пары с фиатной валютой в пару с крипто-.
 
         Examples:
@@ -75,7 +75,7 @@ class KrakenFuturesSymbolConverter:
         return f"{base}/{quote}:{settle}"
 
     @staticmethod
-    def quote_from_usd_to_usdt(symbol: str) -> str:  # noqa: PLR6301
+    def quote_from_usd_to_usdt(symbol: str) -> str:
         """Конвертирует из пары с квотрованной криптовалютой в пару с фиатной.
 
         Examples:
