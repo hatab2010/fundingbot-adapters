@@ -7,7 +7,7 @@
 **Kraken Futures API:**
 - Endpoint: `https://futures.kraken.com/derivatives/api/v3/`
 - REST API Guides: https://docs.kraken.com/api/docs/guides/global-intro
-- REST API Reference Documentation: https://docs.kraken.com/api/docs/rest-api/add-order
+- REST API Reference Documentation: https://docs.kraken.com/api/docs/futures-api/trading/get-tickers
 - Kraken API Center landing page: https://docs.kraken.com/api/
 - Supports: Perpetual futures, options, funding rates
 - Separate authentication system

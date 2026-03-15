@@ -3,11 +3,12 @@ import hashlib
 import hmac
 import time
 from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, cast, override
 from urllib.parse import urlencode
 
-from pydantic import Field, TypeAdapter, ValidationError, model_validator
+from pydantic import Field, TypeAdapter, ValidationError, field_validator, model_validator
 from pydantic.dataclasses import dataclass as pdc_dataclass
 
 from fundingbot_adapters.kraken_futures_market_response import KrakenFuturesMarketResponse
@@ -37,28 +38,42 @@ from fundingbot_sdk.toolkit.error_mapper import map_sdk_errors
 BASE_PATH = "/derivatives/api/v3"
 
 
+def calculate_next_funding_timestamp() -> datetime:
+    """Вычисляет следующее время funding rate для Kraken Futures.
+    
+    Kraken Futures имеет расписание каждые 8 часов: 00:00, 08:00, 16:00 UTC.
+    
+    Returns:
+        datetime: Следующее время funding в UTC.
+    """
+    now_utc = datetime.now(UTC)
+    now_plus_1_hour = now_utc + timedelta(hours=1)
+    return now_plus_1_hour.replace(minute=0, second=0, microsecond=0)
+
+
 # Так как в fetch_funding_rates() мы получаем данные не от ccxt, а raw данные от конкретного биржевого API,
 # то мы не можем использовать FundingRateResponse из fundingbot-sdk,
-# поэтому создаем свой класс для нормализации и валидации данных запроса финансирования для Bitget.
+# поэтому создаем свой класс для нормализации и валидации данных запроса финансирования для Kraken.
 # Не забываем наследоваться от ResponseBase из fundingbot-sdk и использовать pydantic.dataclasses.
 @pdc_dataclass(slots=True, frozen=True)
 class KrakenFuturesFundingRateResponse(ResponseBase):
-    """Нормализует и валидирует ставку финансирования Bitget для USDT‑свопов."""
+    """Нормализует и валидирует ставку финансирования Kraken Futures для USDT‑свопов."""
 
     symbol: str = Field(..., validation_alias="symbol", description="Символ инструмента в формате CCXT (:USDT)")
     exchange: str = Field(..., description="Биржа")
     funding_rate: Decimal = Field(..., validation_alias="fundingRate", description="Ставка финансирования (доля)")
-    # funding_date: datetime = Field(..., validation_alias="nextUpdate", description="Дата и время выплаты финансирования (UTC)")
+    funding_date: datetime = Field(..., validation_alias="fundingDate", description="Дата и время выплаты финансирования (UTC)")
 
     @model_validator(mode="before")
     @classmethod
-    def pair_to_symbol(cls, data: object) -> object:
-        """Приводит symbol к виду BASE/USDT:USDT."""
+    def pair_to_symbol_and_add_funding_timestamp(cls, data: object) -> object:
+        """Приводит symbol к виду BASE/USDT:USDT и добавляет fundingDate."""
         if not isinstance(data, dict):
             return data
 
         item: dict[str, Any] = dict(cast("dict[str, Any]", data))
 
+        # Конвертация символа
         pair = item.get("pair")
         if pair is not None:
             base_cur, quote_cur = pair.split(":")
@@ -66,14 +81,22 @@ class KrakenFuturesFundingRateResponse(ResponseBase):
                 quote_cur = "USDT"
             item["symbol"] = f"{base_cur}/{quote_cur}:{quote_cur}"
 
+        # Добавление fundingDate если его нет
+        item["fundingDate"] = calculate_next_funding_timestamp()
+
         return item
 
-    # @field_validator("funding_date", mode="before")
-    # def to_datetime(cls, v: str | int | datetime) -> datetime:
-    #     """Преобразует мс Unix к UTC‑aware datetime."""
-    #     if isinstance(v, datetime):
-    #         return v
-    #     return datetime.fromtimestamp(int(v) / 1000, tz=UTC)
+    @field_validator("funding_date", mode="before")
+    @classmethod
+    def to_datetime(cls, v: str | int | datetime) -> datetime:
+        """Преобразует различные форматы к UTC‑aware datetime."""
+        if isinstance(v, datetime):
+            return v if v.tzinfo is not None else v.replace(tzinfo=UTC)
+        if isinstance(v, (int, float)):
+            return datetime.fromtimestamp(int(v) / 1000, tz=UTC)
+        # Строка: допускаем суффикс Z
+        iso = str(v).replace("Z", "+00:00")
+        return datetime.fromisoformat(iso)
 
 
 KRAKEN_FUTURES_FUNDING_RATE_ADAPTER = TypeAdapter(KrakenFuturesFundingRateResponse)
@@ -142,8 +165,29 @@ class KrakenFuturesClient(CcxtClient):
     @map_sdk_errors
     @override
     async def get_funding_rate(self, symbol: str) -> FundingProtocol:
+        """Получает funding rate для конкретного символа, используя KrakenFuturesFundingRateResponse."""
         fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
-        return await super().get_funding_rate(fiat_quote_symbol)
+        
+        # Получаем данные через tickers API
+        params_dict = {}
+        headers = await self._create_request_headers("tickers", params_dict)
+        raw_data = await self._exchange.request("tickers", "public", method="GET", params=params_dict, headers=headers)
+        
+        # Ищем нужный символ в ответе
+        # Нужно искать по полю pair, которое имеет формат "XRP:USD"
+        target_pair = fiat_quote_symbol.replace("/", ":").replace(":USD", ":USD")  # XRP/USD:USD -> XRP:USD
+        target_pair = target_pair.split(":")[0] + ":" + target_pair.split(":")[1]  # XRP/USD:USD -> XRP:USD
+        
+        for item in raw_data["tickers"]:
+            if item.get("pair") == target_pair and item.get("fundingRate") is not None:
+                try:
+                    model = KRAKEN_FUTURES_FUNDING_RATE_ADAPTER.validate_python({**item, "exchange": self.EXCHANGE_ID})
+                    if model.symbol == symbol:
+                        return model
+                except ValidationError as e:
+                    raise FundingRateUnavailableError(symbol=symbol, exchange=self.EXCHANGE_ID) from e
+        
+        raise FundingRateUnavailableError(symbol=symbol, exchange=self.EXCHANGE_ID)
 
     @rate_limited(10)
     @map_sdk_errors
