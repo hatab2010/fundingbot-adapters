@@ -156,7 +156,8 @@ class KrakenFuturesClient(CcxtClient):
     async def get_trigger_orders(self, symbol: str) -> Sequence[TriggerOrderProtocol]:
         fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
         native_symbol = KrakenFuturesSymbolConverter.from_ccxt_to_kraken(fiat_quote_symbol)
-        tpsl_orders = await self._exchange.fetch_open_orders(symbol=native_symbol)
+        all_orders = await self._exchange.fetch_open_orders(symbol=native_symbol)
+        tpsl_orders = [o for o in all_orders if o["type"] == "stop"]
         try:
             return self._trigger_order_list_adapter.validate_python(tpsl_orders)
         except ValidationError as e:
