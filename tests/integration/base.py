@@ -36,6 +36,12 @@ class CcxtClientContract:
         raise NotImplementedError
 
     @pytest.mark.asyncio
+    async def test_get_balance(self, client: CcxtClient):
+        """Тестирование получения баланса."""
+        balance = await client.get_balance("USDT")
+        assert balance.free > 0
+
+    @pytest.mark.asyncio
     async def test_get_market_symbols(self, client: CcxtClient):
         symbols = await client.get_market_symbols()
         assert len(symbols) > 0
