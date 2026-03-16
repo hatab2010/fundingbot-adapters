@@ -131,3 +131,4 @@ poetry.lock
 /scripts/
 /prompts/
 /.idea/
+/tests/hello-world/
