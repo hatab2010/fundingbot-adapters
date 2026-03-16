@@ -127,3 +127,7 @@ dmypy.json
 .vscode/
 
 poetry.lock
+/AGENTS.md
+/scripts/
+/prompts/
+/.idea/
