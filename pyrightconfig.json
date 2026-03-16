@@ -2,14 +2,9 @@
   "pythonVersion": "3.12",
   "typeCheckingMode": "strict",
   "include": [
-    "src"
-  ],
-  "exclude": [
-    "tests"
-  ],
-  "extraPaths": [
     "src",
-    "../fundingbot-sdk/src"
+    "submodules/fundingbot-sdk/src",
+    "tests"
   ],
   "reportMissingImports": "warning",
   "reportMissingTypeStubs": "none",

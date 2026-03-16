@@ -169,7 +169,7 @@ class KrakenFuturesClient(CcxtClient):
         fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
 
         # Получаем данные через tickers API
-        params_dict = {}
+        params_dict: dict[str, Any] = {}
         headers = await self._create_request_headers("tickers", params_dict)
         raw_data = await self._exchange.request("tickers", "public", method="GET", params=params_dict, headers=headers)
 
@@ -206,7 +206,7 @@ class KrakenFuturesClient(CcxtClient):
                 if (m.get("swap") is True) and m.get("symbol").endswith(":USD") and (m.get("active") is True)
             }
 
-        params_dict = {}
+        params_dict: dict[str, Any] = {}
         headers = await self._create_request_headers("tickers", params_dict)
         raw_data = await self._exchange.request("tickers", "public", method="GET", params=params_dict, headers=headers)
 
@@ -238,6 +238,9 @@ class KrakenFuturesClient(CcxtClient):
     @map_sdk_errors
     @override
     async def set_margin_mode(self, *, margin_mode: str, symbol: str | None = None, params: dict[str, Any] | None = None) -> None:
+        if symbol is None:
+            raise UnsupportedFeatureError(self.EXCHANGE_ID, "setMarginMode(symbol=None)", params={})
+
         # Согласно docs: можно задать symbol, marginMode и/или maxLeverage.[web:1]
         fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
         native_symbol = KrakenFuturesSymbolConverter.from_ccxt_to_kraken(fiat_quote_symbol)
@@ -248,7 +251,7 @@ class KrakenFuturesClient(CcxtClient):
         if margin_mode.lower() == "cross":
             pass  # Не указываем maxLeverage
         elif margin_mode.lower() == "isolated":
-            if "leverage" not in params:
+            if params is None or "leverage" not in params:
                 exception_message = "params should contain 'leverage'"
                 raise ValueError(exception_message)
             params_dict["maxLeverage"] = params["leverage"]
@@ -266,6 +269,9 @@ class KrakenFuturesClient(CcxtClient):
     @override
     async def set_leverage(self, *, leverage: int, symbol: str | None = None,
                            params: dict[str, Any] | None = None) -> None:
+        if symbol is None:
+            raise UnsupportedFeatureError(self.EXCHANGE_ID, "setMarginMode(symbol=None)", params={})
+
         fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
         return await super().set_leverage(leverage=leverage, symbol=fiat_quote_symbol, params=params)
 

@@ -240,3 +240,26 @@ poetry run pytest -q
 poetry run ruff check
 ```
 
+### Type Checking with Pyright
+
+Проект использует [pyright](https://github.com/microsoft/pyright) для статической проверки типов. Pyright — это быстрый и точный анализатор типов для Python, который помогает выявлять ошибки типизации на этапе разработки.
+
+Pyright настроен в **strict режиме** через [`pyrightconfig.json`](pyrightconfig.json), что обеспечивает максимально строгую проверку типов и помогает поддерживать высокое качество кода.
+
+#### Основные команды pyright
+
+Проверка типов во всем проекте:
+
+```powershell
+# Проверка всего проекта
+poetry run pyright
+
+# Проверка конкретного файла
+poetry run pyright src/fundingbot_adapters/kraken_futures_client.py
+
+# Проверка с подробным выводом
+poetry run pyright --verbose
+
+# Проверка только ошибок (без предупреждений)
+poetry run pyright --level error
+```
