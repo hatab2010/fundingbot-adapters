@@ -41,11 +41,10 @@ BASE_PATH = "/derivatives/api/v3"
 def calculate_next_funding_timestamp() -> datetime:
     """Вычисляет следующее время funding rate для Kraken Futures.
 
-    Kraken Futures имеет расписание каждые 8 часов: 00:00, 08:00, 16:00 UTC.
+    Kraken Futures имеет расписание каждый ровный час.
 
     Returns:
         datetime: Следующее время funding в UTC.
-
     """
     now_utc = datetime.now(UTC)
     now_plus_1_hour = now_utc + timedelta(hours=1)
