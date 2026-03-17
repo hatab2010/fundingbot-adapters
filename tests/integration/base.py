@@ -141,6 +141,9 @@ class CcxtClientContract:
         # 3) Закрываем триггерные ордера
         await client.close_trigger_orders(symbol=symbol, ids=[trigger_orders[0].id, trigger_orders[1].id])
 
+        positions_after = await client.get_positions([symbol])
+        assert len(positions_after) == 1
+
         trigger_orders = await client.get_trigger_orders(symbol=symbol)
         assert len(trigger_orders) == 0  # Ожидается 0 ордеров
 
