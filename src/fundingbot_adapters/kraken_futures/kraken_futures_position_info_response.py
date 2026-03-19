@@ -34,6 +34,6 @@ class KrakenFuturesPositionInfoResponse(CCXTPositionInfoResponse):
             item["notional"] = entry_price * contracts * contract_size
 
         item["hedged"] = False
-        item["margin_mode"] = item["marginMode"]
+        item["margin_mode"] = item["marginType"]
 
         return item
