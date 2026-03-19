@@ -120,10 +120,8 @@ class CcxtClientContract:
         expected_leverage = 3
 
         # 1) Инициализация режимов и плеча
-        try:
+        with contextlib.suppress(UnsupportedFeatureError):
             await client.set_position_mode(hedged=False, symbol=symbol)
-        except UnsupportedFeatureError:
-            contextlib.suppress(UnsupportedFeatureError)
         await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 3})
         await client.set_leverage(leverage=expected_leverage, symbol=symbol)
 
@@ -263,7 +261,6 @@ class CcxtClientContract:
     async def test_set_margin_mode(self, client: CcxtClient, symbol: str):
         await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 1})
 
-    @pytest.mark.asyncio
     async def _close_positions(self, client: CcxtClient, symbol: str):
         positions = await client.get_positions([symbol])
         if len(positions) == 0:
