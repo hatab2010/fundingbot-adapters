@@ -90,4 +90,17 @@ poetry run pytest -q
 # Линтер/форматтер (ruff)
 poetry run ruff check
 poetry run ruff format
+
+# Типизация (pyright)
+poetry run pyright
+```
+
+### Git-хуки (проверки перед commit и push)
+
+```bash
+# Установить хуки pre-commit и pre-push
+poetry run pre-commit install --hook-type pre-commit --hook-type pre-push
+
+# Прогнать все проверки вручную по всему репозиторию
+poetry run pre-commit run --all-files
 ```

@@ -1,9 +1,8 @@
 import contextlib
 import re
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import AsyncIterator
 
 import pytest
 

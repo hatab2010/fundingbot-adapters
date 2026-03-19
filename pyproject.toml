@@ -15,7 +15,9 @@ fundingbot-sdk = { path = "submodules/fundingbot-sdk", develop = true }
 ccxt = "^4.4.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.11.5"
+ruff = "^0.15.6"
+pyright = "^1.1.408"
+pre-commit = "^4.2.0"
 pytest = "^8.3.5"
 pytest-asyncio = "^0.23.8"
 
@@ -27,12 +29,14 @@ build-backend = "poetry_dynamic_versioning.backend"
 line-length = 140
 target-version = "py312"
 src = ["src", "submodules/fundingbot-sdk/src"]
+preview = true
+
+[tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-  "D203", "ANN101", "ANN102", "ERA001", "COM812", "INP001", "PLR0913", "PLR0917", "TC001", "D107",
+  "D203", "ERA001", "COM812", "INP001", "PLR0913", "PLR0917", "TC001", "D107",
   "RUF001", "RUF002", "RUF003", "D100", "ISC001", "ISC002", "N805", "PLR0904", "CPY001", "DOC201"
 ]
-preview = true
 
 [tool.ruff.format]
 quote-style = "double"
@@ -41,7 +45,15 @@ skip-magic-trailing-comma = true
 docstring-code-format = false
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "D102", "PLR0914", "ANN201", "PLR6301", "SLF001", "TC003", "E303"]
+"tests/**" = [
+  "S101",    # assert в тестах — нормальный паттерн
+  "SLF001",  # доступ к приватным атрибутам/методам в тестах
+  "ANN001", "ANN201", "ANN202",  # смягчение аннотаций в тестах
+  "D101", "D102", "D103",         # не требуем docstring в тестовых классах/функциях
+  "ARG001",                        # неиспользуемые аргументы (часто фикстуры)
+  "PLR0914", "PLR2004", "PLR6301",
+  "TC003", "E303"
+]
 
 [tool.ruff.lint.isort]
 known-first-party = [
