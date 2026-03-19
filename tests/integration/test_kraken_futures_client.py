@@ -5,6 +5,7 @@ import pytest
 from config import KRAKEN_API_KEY, KRAKEN_PASSWORD, KRAKEN_SECRET, TESTNET
 from fundingbot_adapters.kraken_futures_client import KrakenFuturesClient
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
+from fundingbot_sdk.toolkit.client_base import CcxtClient
 from tests.integration.base import CcxtClientContract, CexClientPort
 
 

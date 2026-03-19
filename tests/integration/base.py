@@ -1,11 +1,13 @@
 import contextlib
 import re
+import string
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
+from fundingbot_adapters.kraken_futures_client import ExchangeUsesFiatQuoteCurrencies
 from fundingbot_sdk.contracts.errors import UnsupportedFeatureError
 from fundingbot_sdk.contracts.ports.cex_client import CexClientPort
 from fundingbot_sdk.contracts.protocols import PositionProtocol
@@ -16,14 +18,21 @@ class CcxtClientContract:
     """Тестовый контракт для проверки работы CcxtClient."""
 
     @pytest.fixture
-    def symbol(self) -> str:
-        """Символ для тестирования."""
-        return "XRP/USDT:USDT"
+    def quote_currency(self, client: CcxtClient) -> str:
+        """Котируемая валюта."""
+        if issubclass(client.__class__, ExchangeUsesFiatQuoteCurrencies):
+            return "USD"
+        return "USDT"
 
     @pytest.fixture
-    def btc_symbol(self) -> str:
+    def symbol(self, quote_currency: str) -> str:
         """Символ для тестирования."""
-        return "BTC/USDT:USDT"
+        return f"XRP/{quote_currency}:{quote_currency}"
+
+    @pytest.fixture
+    def btc_symbol(self, quote_currency: str) -> str:
+        """Символ для тестирования."""
+        return f"BTC/{quote_currency}:{quote_currency}"
 
     @pytest.fixture
     def amount(self) -> Decimal:
@@ -36,16 +45,16 @@ class CcxtClientContract:
         raise NotImplementedError
 
     @pytest.mark.asyncio
-    async def test_get_balance(self, client: CcxtClient):
+    async def test_get_balance(self, client: CcxtClient, quote_currency: str):
         """Тестирование получения баланса."""
-        balance = await client.get_balance("USDT")
+        balance = await client.get_balance(quote_currency)
         assert balance.free > 0
 
     @pytest.mark.asyncio
-    async def test_get_market_symbols(self, client: CcxtClient):
+    async def test_get_market_symbols(self, client: CcxtClient, quote_currency: str):
         symbols = await client.get_market_symbols()
         assert len(symbols) > 0
-        assert any(s.endswith("/USDT:USDT") for s in symbols)
+        assert any(s.endswith(f"/{quote_currency}:{quote_currency}") for s in symbols)
 
     @pytest.mark.asyncio
     async def test_close_positions(self, client: CcxtClient, symbol: str):
@@ -141,12 +150,15 @@ class CcxtClientContract:
         assert data.symbol == symbol
 
     @pytest.mark.asyncio
-    async def test_get_funding_usdt_rates(self, client: CcxtClient):
+    async def test_get_funding_usdt_rates(self, client: CcxtClient, quote_currency: str):
         data = await client.get_funding_usdt_rates()
         assert len(data) > 0
-        pattern = re.compile(r"^(?P<base>[A-Z0-9]{1,32})\/USDT:USDT$")
+        symbol_suffix = f"/{quote_currency}:{quote_currency}"
         for item in data:
-            assert pattern.match(item.symbol), f"symbol не соответствует ^(?P<base>[A-Z0-9]{2, 32})\\/USDT:USDT$: {item.symbol}"
+            assert item.symbol.endswith(symbol_suffix), f"symbol должен заканчиваться на {symbol_suffix}: {item.symbol}"
+            base_length = len(item.symbol) - len(symbol_suffix)
+            assert 1 <= base_length <= 32, f"Длина base-валюты в symbol должна быть от 1 до 32 символов: {item.symbol}"
+            assert all([ch not in string.whitespace for ch in item.symbol[:base_length]]), f"base-валюта в symbol не должна содержать пробельные символы: `{item.symbol}`"
             dt = getattr(item, "funding_date", None)
             assert dt is not None, "funding_date отсутствует в элементе ответа"
             assert dt.tzinfo is not None, f"funding_date без tzinfo: {dt}"

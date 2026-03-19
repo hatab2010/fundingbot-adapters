@@ -11,7 +11,6 @@ from urllib.parse import urlencode
 from pydantic import Field, TypeAdapter, ValidationError, field_validator, model_validator
 from pydantic.dataclasses import dataclass as pdc_dataclass
 
-from fundingbot_adapters.kraken_futures_market_response import KrakenFuturesMarketResponse
 from fundingbot_adapters.kraken_futures_position_info_response import KrakenFuturesPositionInfoResponse
 from fundingbot_adapters.kraken_futures_symbol_converter import KrakenFuturesSymbolConverter
 from fundingbot_sdk.contracts.errors import (
@@ -23,12 +22,8 @@ from fundingbot_sdk.contracts.errors import (
 )
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
 from fundingbot_sdk.contracts.protocols import (
-    BalanceProtocol,
     FundingProtocol,
-    InstrumentProtocol,
     OrderEntityProtocol,
-    PositionProtocol,
-    TickerProtocol,
     TriggerOrderProtocol,
 )
 from fundingbot_sdk.schemas.base import ResponseBase
@@ -59,7 +54,7 @@ def calculate_next_funding_timestamp() -> datetime:
 class KrakenFuturesFundingRateResponse(ResponseBase):
     """Нормализует и валидирует ставку финансирования Kraken Futures для USDT‑свопов."""
 
-    symbol: str = Field(..., validation_alias="symbol", description="Символ инструмента в формате CCXT (:USDT)")
+    symbol: str = Field(..., validation_alias="symbol", description="Символ инструмента в формате CCXT (:USD)")
     exchange: str = Field(..., description="Биржа")
     funding_rate: Decimal = Field(..., validation_alias="fundingRate", description="Ставка финансирования (доля)")
     funding_date: datetime = Field(..., validation_alias="fundingDate", description="Дата и время выплаты финансирования (UTC)")
@@ -77,8 +72,6 @@ class KrakenFuturesFundingRateResponse(ResponseBase):
         pair = item.get("pair")
         if pair is not None:
             base_cur, quote_cur = pair.split(":")
-            if quote_cur == "USD":
-                quote_cur = "USDT"
             item["symbol"] = f"{base_cur}/{quote_cur}:{quote_cur}"
 
         # Добавление fundingDate если его нет
@@ -102,13 +95,16 @@ class KrakenFuturesFundingRateResponse(ResponseBase):
 KRAKEN_FUTURES_FUNDING_RATE_ADAPTER = TypeAdapter(KrakenFuturesFundingRateResponse)
 
 
-class KrakenFuturesClient(CcxtClient):
+class ExchangeUsesFiatQuoteCurrencies:
+    pass
+
+
+class KrakenFuturesClient(CcxtClient, ExchangeUsesFiatQuoteCurrencies):
     """клиент Kraken на базе ccxt для USD‑свопов."""
 
     EXCHANGE_ID = "krakenfutures"
 
     _position_info_adapter = TypeAdapter(KrakenFuturesPositionInfoResponse)
-    _market_response_adapter = TypeAdapter(KrakenFuturesMarketResponse)
 
     def __init__(self, config: CexClientConfig, *, verbose: bool = False) -> None:
         self._leverage = None
@@ -118,38 +114,6 @@ class KrakenFuturesClient(CcxtClient):
         self.futures_base_url = "https://futures.kraken.com/derivatives/api/v3"
         if config.testnet:
             self.futures_base_url = "https://demo-futures.kraken.com/derivatives/api/v3"
-
-    @map_sdk_errors
-    @override
-    async def get_market_symbols(self) -> list[str]:
-        super_result = await super().get_market_symbols()
-        return [KrakenFuturesSymbolConverter.quote_from_usd_to_usdt(symbol) for symbol in super_result]
-
-    @map_sdk_errors
-    @override
-    async def get_ticker(self, symbol: str) -> TickerProtocol:
-        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
-        native_symbol = KrakenFuturesSymbolConverter.from_ccxt_to_kraken(fiat_quote_symbol)
-        return await super().get_ticker(native_symbol)
-
-    @map_sdk_errors
-    @override
-    async def get_positions(self, symbols: list[str], params: dict[str, Any] | None = None) -> Sequence[
-        PositionProtocol]:
-        fiat_quote_symbols = [KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol) for symbol in symbols]
-        return await super().get_positions(fiat_quote_symbols, params)
-
-    @map_sdk_errors
-    @override
-    async def close_trigger_orders(self, symbol: str, ids: list[str], params: dict[str, Any] | None = None) -> None:
-        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
-        return await super().close_trigger_orders(fiat_quote_symbol, ids, params)
-
-    @map_sdk_errors
-    @override
-    async def get_instrument_info(self, symbol: str) -> InstrumentProtocol:
-        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
-        return await super().get_instrument_info(fiat_quote_symbol)
 
     @map_sdk_errors
     @override
@@ -166,8 +130,6 @@ class KrakenFuturesClient(CcxtClient):
     @map_sdk_errors
     @override
     async def get_funding_rate(self, symbol: str) -> FundingProtocol:
-        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
-
         # Получаем данные через tickers API
         params_dict: dict[str, Any] = {}
         headers = await self._create_request_headers("tickers", params_dict)
@@ -175,7 +137,7 @@ class KrakenFuturesClient(CcxtClient):
 
         # Ищем нужный символ в ответе
         # Нужно искать по полю pair, которое имеет формат "XRP:USD"
-        target_pair = fiat_quote_symbol.replace("/", ":").replace(":USD", ":USD")  # XRP/USD:USD -> XRP:USD
+        target_pair = symbol.replace("/", ":").replace(":USD", ":USD")  # XRP/USD:USD -> XRP:USD
         target_pair = target_pair.split(":")[0] + ":" + target_pair.split(":")[1]  # XRP/USD:USD -> XRP:USD
 
         for item in raw_data["tickers"]:
@@ -201,7 +163,7 @@ class KrakenFuturesClient(CcxtClient):
         active_symbols: set[str] | None = None
         if is_active:
             active_symbols = {
-                KrakenFuturesSymbolConverter.quote_from_usd_to_usdt(m.get("symbol"))
+                m.get("symbol")
                 for m in self._exchange.markets.values()
                 if (m.get("swap") is True) and m.get("symbol").endswith(":USD") and (m.get("active") is True)
             }
@@ -325,13 +287,6 @@ class KrakenFuturesClient(CcxtClient):
     def price_to_precision(self, symbol: str, price: Decimal) -> Decimal:
         fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
         return super().price_to_precision(fiat_quote_symbol, price)
-
-    @map_sdk_errors
-    @override
-    async def get_balance(self, coin: str) -> BalanceProtocol:
-        if coin == "USD":
-            coin = "USDT"
-        return await super().get_balance(coin)
 
     @staticmethod
     def _against_side(side: str) -> str:

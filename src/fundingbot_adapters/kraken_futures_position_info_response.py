@@ -1,9 +1,8 @@
 from typing import Any, cast
 
-from pydantic import field_validator, model_validator
+from pydantic import model_validator
 from pydantic.dataclasses import dataclass as pdc_dataclass
 
-from fundingbot_adapters.kraken_futures_symbol_converter import KrakenFuturesSymbolConverter
 from fundingbot_sdk.schemas.position_info import CCXTPositionInfoResponse
 
 
@@ -14,12 +13,6 @@ class KrakenFuturesPositionInfoResponse(CCXTPositionInfoResponse):
     Контракт совпадает с ``CCXTPositionInfoResponse``. Дополнительно нормализуются:
     - поле symbol - конвертируется из символа с фиатной quote-частью в соответствующий символ со стейблкоином.
     """
-
-    @field_validator("symbol", mode="before")
-    @classmethod
-    def stable_coin_quote_symbol(cls, v: str) -> str:
-        """Конвертирует из пары с квотрованной криптовалютой в пару с фиатной."""
-        return KrakenFuturesSymbolConverter.quote_from_usd_to_usdt(v)
 
     @model_validator(mode="before")
     @classmethod
