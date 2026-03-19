@@ -1,3 +1,4 @@
+import contextlib
 import re
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
@@ -31,6 +32,10 @@ class CcxtClientContract:
         raise NotImplementedError
 
     @pytest.mark.asyncio
+    async def test_get_balance(self, client: CcxtClient):
+        """Тестирование получения баланса."""
+        balance = await client.get_balance("USDT")
+        assert balance.free > 0
 
     @pytest.mark.asyncio
     async def test_tpsl_lifecycle_asserts(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
