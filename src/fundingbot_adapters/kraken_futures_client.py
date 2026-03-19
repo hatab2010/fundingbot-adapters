@@ -5,14 +5,14 @@ import time
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any, cast, override
+from typing import Any, override
 from urllib.parse import urlencode
 
-from pydantic import Field, TypeAdapter, ValidationError, field_validator, model_validator
-from pydantic.dataclasses import dataclass as pdc_dataclass
+from pydantic import TypeAdapter, ValidationError
 
-from fundingbot_adapters.kraken_futures_position_info_response import KrakenFuturesPositionInfoResponse
-from fundingbot_adapters.kraken_futures_symbol_converter import KrakenFuturesSymbolConverter
+from fundingbot_adapters.kraken_futures.kraken_futures_funding_rate_response import KrakenFuturesFundingRateResponse
+from fundingbot_adapters.kraken_futures.kraken_futures_position_info_response import KrakenFuturesPositionInfoResponse
+from fundingbot_adapters.kraken_futures.kraken_futures_symbol_converter import KrakenFuturesSymbolConverter
 from fundingbot_sdk.contracts.errors import (
     FundingRateUnavailableError,
     OrderUnavailableError,
@@ -26,7 +26,6 @@ from fundingbot_sdk.contracts.protocols import (
     OrderEntityProtocol,
     TriggerOrderProtocol,
 )
-from fundingbot_sdk.schemas.base import ResponseBase
 from fundingbot_sdk.toolkit.client_base import CcxtClient, rate_limited
 from fundingbot_sdk.toolkit.error_mapper import map_sdk_errors
 
@@ -51,46 +50,6 @@ def calculate_next_funding_timestamp() -> datetime:
 # то мы не можем использовать FundingRateResponse из fundingbot-sdk,
 # поэтому создаем свой класс для нормализации и валидации данных запроса финансирования для Kraken.
 # Не забываем наследоваться от ResponseBase из fundingbot-sdk и использовать pydantic.dataclasses.
-@pdc_dataclass(slots=True, frozen=True)
-class KrakenFuturesFundingRateResponse(ResponseBase):
-    """Нормализует и валидирует ставку финансирования Kraken Futures для USDT‑свопов."""
-
-    symbol: str = Field(..., validation_alias="symbol", description="Символ инструмента в формате CCXT (:USD)")
-    exchange: str = Field(..., description="Биржа")
-    funding_rate: Decimal = Field(..., validation_alias="fundingRate", description="Ставка финансирования (доля)")
-    funding_date: datetime = Field(..., validation_alias="fundingDate", description="Дата и время выплаты финансирования (UTC)")
-
-    @model_validator(mode="before")
-    @classmethod
-    def pair_to_symbol_and_add_funding_timestamp(cls, data: object) -> object:
-        """Приводит symbol к виду BASE/USDT:USDT и добавляет fundingDate."""
-        if not isinstance(data, dict):
-            return data
-
-        item: dict[str, Any] = dict(cast("dict[str, Any]", data))
-
-        # Конвертация символа
-        pair = item.get("pair")
-        if pair is not None:
-            base_cur, quote_cur = pair.split(":")
-            item["symbol"] = f"{base_cur}/{quote_cur}:{quote_cur}"
-
-        # Добавление fundingDate если его нет
-        item["fundingDate"] = calculate_next_funding_timestamp()
-
-        return item
-
-    @field_validator("funding_date", mode="before")
-    @classmethod
-    def to_datetime(cls, v: str | int | datetime) -> datetime:
-        """Преобразует различные форматы к UTC‑aware datetime."""
-        if isinstance(v, datetime):
-            return v if v.tzinfo is not None else v.replace(tzinfo=UTC)
-        if isinstance(v, (int, float)):
-            return datetime.fromtimestamp(int(v) / 1000, tz=UTC)
-        # Строка: допускаем суффикс Z
-        iso = str(v).replace("Z", "+00:00")
-        return datetime.fromisoformat(iso)
 
 
 KRAKEN_FUTURES_FUNDING_RATE_ADAPTER = TypeAdapter(KrakenFuturesFundingRateResponse)
@@ -123,8 +82,7 @@ class KrakenFuturesClient(CcxtClient, ExchangeUsesFiatQuoteCurrencies):
     @map_sdk_errors
     @override
     async def get_trigger_orders(self, symbol: str) -> Sequence[TriggerOrderProtocol]:
-        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
-        native_symbol = KrakenFuturesSymbolConverter.from_ccxt_to_kraken(fiat_quote_symbol)
+        native_symbol = KrakenFuturesSymbolConverter.from_ccxt_to_kraken(symbol)
         all_orders = await self._exchange.fetch_open_orders(symbol=native_symbol)
         tpsl_orders = [o for o in all_orders if o["type"] == "stop"]
         try:
@@ -209,8 +167,7 @@ class KrakenFuturesClient(CcxtClient, ExchangeUsesFiatQuoteCurrencies):
             raise UnsupportedFeatureError(self.EXCHANGE_ID, "setMarginMode(symbol=None)", params={})
 
         # Согласно docs: можно задать symbol, marginMode и/или maxLeverage.[web:1]
-        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
-        native_symbol = KrakenFuturesSymbolConverter.from_ccxt_to_kraken(fiat_quote_symbol)
+        native_symbol = KrakenFuturesSymbolConverter.from_ccxt_to_kraken(symbol)
         params_dict = {"symbol": native_symbol}
         # params = {"symbol": symbol}
 
@@ -239,8 +196,7 @@ class KrakenFuturesClient(CcxtClient, ExchangeUsesFiatQuoteCurrencies):
         if symbol is None:
             raise UnsupportedFeatureError(self.EXCHANGE_ID, "setMarginMode(symbol=None)", params={})
 
-        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
-        return await super().set_leverage(leverage=leverage, symbol=fiat_quote_symbol, params=params)
+        return await super().set_leverage(leverage=leverage, symbol=symbol, params=params)
 
     @rate_limited(3)
     @map_sdk_errors
@@ -256,11 +212,10 @@ class KrakenFuturesClient(CcxtClient, ExchangeUsesFiatQuoteCurrencies):
         stop_loss: Decimal,
         margin_mode: str = "isolated",
     ) -> OrderEntityProtocol:
-        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
-        data = await self._exchange.create_order(symbol=fiat_quote_symbol, side=side, type=order_type, amount=amount)
+        data = await self._exchange.create_order(symbol=symbol, side=side, type=order_type, amount=amount)
 
         await self._exchange.create_order(
-            fiat_quote_symbol,
+            symbol,
             "stp",
             self._against_side(side),
             amount=amount,
@@ -268,7 +223,7 @@ class KrakenFuturesClient(CcxtClient, ExchangeUsesFiatQuoteCurrencies):
         )
 
         await self._exchange.create_order(
-            fiat_quote_symbol,
+            symbol,
             "take_profit",
             self._against_side(side),
             amount=amount,
@@ -279,19 +234,6 @@ class KrakenFuturesClient(CcxtClient, ExchangeUsesFiatQuoteCurrencies):
             return self._create_order_response_adapter.validate_python(data)
         except ValidationError as e:
             raise OrderUnavailableError(symbol=symbol, exchange=self.cex_id) from e
-
-    @map_sdk_errors
-    @override
-    async def create_order(self, symbol: str, order_type: str, side: str, amount: Decimal, price: Decimal | None = None,
-                           params: dict[str, Any] | None = None, margin_mode: str = "isolated") -> OrderEntityProtocol:
-        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
-        return await super().create_order(fiat_quote_symbol, order_type, side, amount, price, params, margin_mode)
-
-    @map_sdk_errors
-    @override
-    def price_to_precision(self, symbol: str, price: Decimal) -> Decimal:
-        fiat_quote_symbol = KrakenFuturesSymbolConverter.quote_from_usdt_to_usd(symbol)
-        return super().price_to_precision(fiat_quote_symbol, price)
 
     @staticmethod
     def _against_side(side: str) -> str:
