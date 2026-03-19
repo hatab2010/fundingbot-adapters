@@ -40,6 +40,7 @@ def calculate_next_funding_timestamp() -> datetime:
 
     Returns:
         datetime: Следующее время funding в UTC.
+
     """
     now_utc = datetime.now(UTC)
     now_plus_1_hour = now_utc + timedelta(hours=1)
@@ -96,7 +97,11 @@ KRAKEN_FUTURES_FUNDING_RATE_ADAPTER = TypeAdapter(KrakenFuturesFundingRateRespon
 
 
 class ExchangeUsesFiatQuoteCurrencies:
-    pass
+    """Биржа использует фиатные валюты в качестве котируемого символа.
+
+    Пустой интерфейс, чтобы помечать реализации CcxtClient, что биржи, с которыми эти клиенты работают, используют
+    фиатные валюты в качестве котируемого символа (USD место USDT).
+    """
 
 
 class KrakenFuturesClient(CcxtClient, ExchangeUsesFiatQuoteCurrencies):

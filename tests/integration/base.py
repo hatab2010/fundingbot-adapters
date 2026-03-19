@@ -1,5 +1,4 @@
 import contextlib
-import re
 import string
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime, timedelta
@@ -167,7 +166,8 @@ class CcxtClientContract:
             assert item.symbol.endswith(symbol_suffix), f"symbol должен заканчиваться на {symbol_suffix}: {item.symbol}"
             base_length = len(item.symbol) - len(symbol_suffix)
             assert 1 <= base_length <= 32, f"Длина base-валюты в symbol должна быть от 1 до 32 символов: {item.symbol}"
-            assert all([ch not in string.whitespace for ch in item.symbol[:base_length]]), f"base-валюта в symbol не должна содержать пробельные символы: `{item.symbol}`"
+            assert all(ch not in string.whitespace for ch in item.symbol[:base_length]), \
+                f"base-валюта в symbol не должна содержать пробельные символы: `{item.symbol}`"
             dt = getattr(item, "funding_date", None)
             assert dt is not None, "funding_date отсутствует в элементе ответа"
             assert dt.tzinfo is not None, f"funding_date без tzinfo: {dt}"
