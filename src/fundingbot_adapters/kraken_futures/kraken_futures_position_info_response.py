@@ -33,4 +33,7 @@ class KrakenFuturesPositionInfoResponse(CCXTPositionInfoResponse):
         if entry_price is not None and contracts is not None and contract_size is not None:
             item["notional"] = entry_price * contracts * contract_size
 
+        item["hedged"] = False
+        item["margin_mode"] = item["marginMode"]
+
         return item

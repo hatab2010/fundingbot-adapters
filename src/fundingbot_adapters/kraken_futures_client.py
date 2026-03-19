@@ -3,7 +3,6 @@ import hashlib
 import hmac
 import time
 from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, override
 from urllib.parse import urlencode
@@ -30,28 +29,6 @@ from fundingbot_sdk.toolkit.client_base import CcxtClient, rate_limited
 from fundingbot_sdk.toolkit.error_mapper import map_sdk_errors
 
 BASE_PATH = "/derivatives/api/v3"
-
-
-def calculate_next_funding_timestamp() -> datetime:
-    """Вычисляет следующее время funding rate для Kraken Futures.
-
-    Kraken Futures имеет расписание каждый ровный час.
-
-    Returns:
-        datetime: Следующее время funding в UTC.
-
-    """
-    now_utc = datetime.now(UTC)
-    now_plus_1_hour = now_utc + timedelta(hours=1)
-    return now_plus_1_hour.replace(minute=0, second=0, microsecond=0)
-
-
-# Так как в fetch_funding_rates() мы получаем данные не от ccxt, а raw данные от конкретного биржевого API,
-# то мы не можем использовать FundingRateResponse из fundingbot-sdk,
-# поэтому создаем свой класс для нормализации и валидации данных запроса финансирования для Kraken.
-# Не забываем наследоваться от ResponseBase из fundingbot-sdk и использовать pydantic.dataclasses.
-
-
 KRAKEN_FUTURES_FUNDING_RATE_ADAPTER = TypeAdapter(KrakenFuturesFundingRateResponse)
 
 

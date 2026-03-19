@@ -127,8 +127,8 @@ class CcxtClientContract:
 
         # Проверка плеча и режима позиции (one-way)
         assert int(position.leverage) == expected_leverage
-        assert position.hedged is False or position.hedged is None
-        assert position.margin_mode == "isolated" or position.margin_mode is None
+        assert position.hedged is False
+        assert position.margin_mode == "isolated"
 
         # TP/SL как план-ордера: ожидаем два ордера (profit_plan + loss_plan)
         tpsl_orders = await client.get_trigger_orders(symbol=symbol)
@@ -229,8 +229,8 @@ class CcxtClientContract:
 
             # Проверки параметров позиции
             assert int(position.leverage) == expected_leverage
-            assert position.hedged is False or position.hedged is None
-            assert position.margin_mode == "isolated" or position.margin_mode is None
+            assert position.hedged is False
+            assert position.margin_mode == "isolated"
             assert position.contracts > 0
             assert position.entry_price > 0
             assert position.notional > 0
