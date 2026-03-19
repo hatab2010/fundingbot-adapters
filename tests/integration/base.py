@@ -45,12 +45,6 @@ class CcxtClientContract:
         raise NotImplementedError
 
     @pytest.mark.asyncio
-    async def test_get_balance(self, client: CcxtClient, quote_currency: str):
-        """Тестирование получения баланса."""
-        balance = await client.get_balance(quote_currency)
-        assert balance.free > 0
-
-    @pytest.mark.asyncio
     async def test_get_market_symbols(self, client: CcxtClient, quote_currency: str):
         symbols = await client.get_market_symbols()
         assert len(symbols) > 0
@@ -70,6 +64,12 @@ class CcxtClientContract:
                 amount=position.contracts,
                 params={"reduceOnly": True, "offset": "close"},
             )
+
+    @pytest.mark.asyncio
+    async def test_get_balance(self, client: CcxtClient, quote_currency: str):
+        """Тестирование получения баланса."""
+        balance = await client.get_balance(quote_currency)
+        assert balance.free > 0
 
     @pytest.mark.asyncio
     async def test_get_trigger_orders(self, client: CcxtClient, symbol: str) -> None:
@@ -112,7 +112,12 @@ class CcxtClientContract:
 
         # 2) Открываем позицию с TP/SL
         await client.create_tpsl_position(
-            symbol=symbol, order_type="market", side="buy", amount=contracts, take_profit=take_profit, stop_loss=stop_loss
+            symbol=symbol,
+            order_type="market",
+            side="buy",
+            amount=contracts,
+            take_profit=take_profit,
+            stop_loss=stop_loss,
         )
 
         # 3) Проверки позиции
@@ -133,7 +138,11 @@ class CcxtClientContract:
 
         # 4) Закрываем позицию рыночным reduceOnly и проверяем, что ордера исчезли
         await client.create_order(
-            symbol=symbol, order_type="market", side="sell", amount=position.contracts, params={"reduceOnly": True, "offset": "close"}
+            symbol=symbol,
+            order_type="market",
+            side="sell",
+            amount=position.contracts,
+            params={"reduceOnly": True, "offset": "close"},
         )
 
         positions_after = await client.get_positions([symbol])
@@ -224,9 +233,8 @@ class CcxtClientContract:
             assert position.margin_mode == "isolated" or position.margin_mode is None
             assert position.contracts > 0
             assert position.entry_price > 0
-            assert position.notional is None or position.notional > 0
+            assert position.notional > 0
             assert position.symbol == symbol
-            # assert position.symbol == client.get_symbol_converter().quote_from_stable_coin_to_fiat_if_needed(symbol)
 
             # Закрытие позиции
             await client.create_order(

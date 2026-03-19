@@ -1,0 +1,24 @@
+default_install_hook_types:
+  - pre-commit
+  - pre-push
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: poetry run ruff check src tests
+        language: system
+        pass_filenames: false
+        stages:
+          - pre-commit
+          - pre-push
+
+      - id: pyright-check
+        name: pyright
+        entry: poetry run pyright
+        language: system
+        pass_filenames: false
+        stages:
+          - pre-commit
+          - pre-push

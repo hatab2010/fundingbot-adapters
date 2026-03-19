@@ -3,21 +3,23 @@
   "typeCheckingMode": "strict",
   "include": [
     "src",
-    "submodules/fundingbot-sdk/src",
     "tests"
+  ],
+  "extraPaths": [
+    "src",
+    "submodules/fundingbot-sdk/src"
   ],
   "reportMissingImports": "warning",
   "reportMissingTypeStubs": "none",
+  "reportMissingTypeArgument": "error",
   "reportUnknownVariableType": "error",
   "reportUnknownParameterType": "error",
   "reportUnknownArgumentType": "error",
   "reportUnknownMemberType": "error",
-  "reportInvalidCast": "error",
   "reportUnnecessaryCast": "warning",
   "reportOptionalMemberAccess": "error",
   "reportOptionalSubscript": "error",
   "reportOptionalCall": "error",
-  "reportMissingTypeArguments": "error",
   "strictListInference": true,
   "strictDictionaryInference": true,
   "strictParameterNoneValue": true
