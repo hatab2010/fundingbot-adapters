@@ -1,3 +1,4 @@
+import contextlib
 import re
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime, timedelta
@@ -5,6 +6,7 @@ from decimal import Decimal
 
 import pytest
 
+from fundingbot_sdk.contracts.errors import UnsupportedFeatureError
 from fundingbot_sdk.contracts.ports.cex_client import CexClientPort
 from fundingbot_sdk.contracts.protocols import PositionProtocol
 from fundingbot_sdk.toolkit.client_base import CcxtClient
@@ -29,35 +31,10 @@ class CcxtClientContract:
         raise NotImplementedError
 
     @pytest.mark.asyncio
-    async def test_close_positions(self, client: CcxtClient, symbol: str):
-        positions = await client.get_positions([symbol])
-        if len(positions) == 0:
-            return
-
-        for position in positions:
-            await client.create_order(
-                symbol=symbol,
-                side="sell" if position.side == "long" else "buy",
-                order_type="market",
-                amount=position.contracts,
-                params={"reduceOnly": True, "offset": "close"},
-            )
-
-    @pytest.mark.asyncio
     async def test_get_balance(self, client: CcxtClient):
         """Тестирование получения баланса."""
         balance = await client.get_balance("USDT")
         assert balance.free > 0
-
-    @pytest.mark.asyncio
-    async def test_get_trigger_orders(self, client: CcxtClient, symbol: str) -> None:
-        tpsl_orders = await client.get_trigger_orders(symbol=symbol)
-        assert len(tpsl_orders) == 0
-
-    @pytest.mark.asyncio
-    async def test_get_positions(self, client: CcxtClient, symbol: str):
-        positions = await client.get_positions([symbol])
-        assert len(positions) == 0
 
     @pytest.mark.asyncio
     async def test_tpsl_lifecycle_asserts(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
@@ -69,6 +46,7 @@ class CcxtClientContract:
         3) Проверить: в позиции нужное плечо и hedged=False; открыты 2 триггер-ордера (TP+SL).
         4) Закрыть позицию и убедиться, что позиции нет и ордера исчезли.
         """
+        await self._close_positions(client, symbol)
         await client.load_markets()
         expected_leverage = 3
 
@@ -126,6 +104,52 @@ class CcxtClientContract:
         assert len(tpsl_orders_after) == 0
 
     @pytest.mark.asyncio
+    async def test_close_trigger_orders(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
+        """Проверяет закрытие триггерных ордеров с помощью метода close_trigger_orders.
+
+        Шаги:
+        1) Установить one-way режим (hedged=False), isolated маржу и плечо.
+        2) Открыть позицию с TP/SL через create_tpsl_position.
+        3) Проверить: в позиции нужное плечо и hedged=False; открыты 2 триггер-ордера (TP+SL).
+        4) Закрыть триггерные ордера.
+        5) Проверить, что триггер ордеров теперь 0.
+        """
+        await self._close_positions(client, symbol)
+        await client.load_markets()
+        expected_leverage = 3
+
+        # 1) Инициализация режимов и плеча
+        with contextlib.suppress(UnsupportedFeatureError):
+            await client.set_position_mode(hedged=False, symbol=symbol)
+        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 3})
+        await client.set_leverage(leverage=expected_leverage, symbol=symbol)
+
+        # Подготовка размеров
+        instrument = await client.get_instrument_info(symbol)
+        contracts = amount / instrument.contract_size
+
+        ticker = await client.get_ticker(symbol)
+        take_profit = client.price_to_precision(symbol, ticker.last_price * Decimal("1.2"))
+        stop_loss = client.price_to_precision(symbol, ticker.last_price * Decimal("0.9"))
+
+        # 2) Открываем позицию с TP/SL
+        await client.create_tpsl_position(
+            symbol=symbol, order_type="market", side="buy", amount=contracts, take_profit=take_profit, stop_loss=stop_loss
+        )
+
+        trigger_orders = await client.get_trigger_orders(symbol=symbol)
+        assert len(trigger_orders) == 2  # Ожидается 2 ордера (TP и SL)
+
+        # 3) Закрываем триггерные ордера
+        await client.close_trigger_orders(symbol=symbol, ids=[trigger_orders[0].id, trigger_orders[1].id])
+
+        positions_after = await client.get_positions([symbol])
+        assert len(positions_after) == 1
+
+        trigger_orders = await client.get_trigger_orders(symbol=symbol)
+        assert len(trigger_orders) == 0  # Ожидается 0 ордеров
+
+    @pytest.mark.asyncio
     async def test_get_funding_usdt_rates(self, client: CcxtClient):
         data = await client.get_funding_usdt_rates()
         assert len(data) > 0
@@ -169,6 +193,7 @@ class CcxtClientContract:
         3) Проверить свойства позиции: плечо, режимы, наличие контрактов и метаданные.
         4) Закрыть позицию рыночным reduceOnly и убедиться в отсутствии позиции.
         """
+        await self._close_positions(client, symbol)
         await client.load_markets()
 
         instrument_info = await client.get_instrument_info(symbol)
@@ -234,3 +259,17 @@ class CcxtClientContract:
     @pytest.mark.asyncio
     async def test_set_margin_mode(self, client: CcxtClient, symbol: str):
         await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 1})
+
+    async def _close_positions(self, client: CcxtClient, symbol: str):
+        positions = await client.get_positions([symbol])
+        if len(positions) == 0:
+            return
+
+        for position in positions:
+            await client.create_order(
+                symbol=symbol,
+                side="sell" if position.side == "long" else "buy",
+                order_type="market",
+                amount=position.contracts,
+                params={"reduceOnly": True, "offset": "close"},
+            )
