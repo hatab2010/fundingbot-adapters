@@ -1,5 +1,6 @@
 import contextlib
 import string
+import re
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -94,11 +95,9 @@ class CcxtClientContract:
         expected_leverage = 3
 
         # 1) Инициализация режимов и плеча
-        try:
+        with contextlib.suppress(UnsupportedFeatureError):
             await client.set_position_mode(hedged=False, symbol=symbol)
-        except UnsupportedFeatureError:
-            contextlib.suppress(UnsupportedFeatureError)
-        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 3})
+        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={'leverage': 3})
         await client.set_leverage(leverage=expected_leverage, symbol=symbol)
 
         # Подготовка размеров
@@ -206,11 +205,9 @@ class CcxtClientContract:
         instrument_info = await client.get_instrument_info(symbol)
         amount /= instrument_info.contract_size
 
-        try:
+        with contextlib.suppress(UnsupportedFeatureError):
             await client.set_position_mode(hedged=False, symbol=symbol)
-        except UnsupportedFeatureError:
-            contextlib.suppress(UnsupportedFeatureError)
-        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 2})
+        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={'leverage': 2})
 
         leverage_by_side = {"buy": 2, "sell": 4}
 
@@ -265,11 +262,14 @@ class CcxtClientContract:
         await client.set_leverage(leverage=1, symbol=symbol)
 
     @pytest.mark.asyncio
-    async def test_set_position_mode(self, client: CcxtClient):
-        try:
+    async def test_set_position_mode_false(self, client: CcxtClient):
+        with contextlib.suppress(UnsupportedFeatureError):
+            await client.set_position_mode(hedged=False, symbol=None)
+
+    @pytest.mark.asyncio
+    async def test_set_position_mode_true(self, client: CcxtClient):
+        with contextlib.suppress(UnsupportedFeatureError):
             await client.set_position_mode(hedged=True, symbol=None)
-        except UnsupportedFeatureError:
-            contextlib.suppress(UnsupportedFeatureError)
 
     @pytest.mark.asyncio
     async def test_set_margin_mode(self, client: CcxtClient, symbol: str):
