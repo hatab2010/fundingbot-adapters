@@ -1,8 +1,8 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, cast
 
-from pydantic import Field, model_validator, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic.dataclasses import dataclass as pdc_dataclass
 
 from fundingbot_adapters.kraken_futures.kraken_futures_utils import calculate_next_funding_timestamp

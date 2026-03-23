@@ -20,11 +20,7 @@ from fundingbot_sdk.contracts.errors import (
     UnsupportedFeatureError,
 )
 from fundingbot_sdk.contracts.ports.cex_client import CexClientConfig
-from fundingbot_sdk.contracts.protocols import (
-    FundingProtocol,
-    OrderEntityProtocol,
-    TriggerOrderProtocol,
-)
+from fundingbot_sdk.contracts.protocols import FundingProtocol, OrderEntityProtocol, TriggerOrderProtocol
 from fundingbot_sdk.toolkit.client_base import CcxtClient, rate_limited
 from fundingbot_sdk.toolkit.error_mapper import map_sdk_errors
 
@@ -168,8 +164,7 @@ class KrakenFuturesClient(CcxtClient, ExchangeUsesFiatQuoteCurrencies):
 
     @map_sdk_errors
     @override
-    async def set_leverage(self, *, leverage: int, symbol: str | None = None,
-                           params: dict[str, Any] | None = None) -> None:
+    async def set_leverage(self, *, leverage: int, symbol: str | None = None, params: dict[str, Any] | None = None) -> None:
         if symbol is None:
             raise UnsupportedFeatureError(self.EXCHANGE_ID, "setMarginMode(symbol=None)", params={})
 
@@ -192,19 +187,11 @@ class KrakenFuturesClient(CcxtClient, ExchangeUsesFiatQuoteCurrencies):
         data = await self._exchange.create_order(symbol=symbol, side=side, type=order_type, amount=amount)
 
         await self._exchange.create_order(
-            symbol,
-            "stp",
-            self._against_side(side),
-            amount=amount,
-            params={"stopPrice": stop_loss, "reduceOnly": True},
+            symbol, "stp", self._against_side(side), amount=amount, params={"stopPrice": stop_loss, "reduceOnly": True}
         )
 
         await self._exchange.create_order(
-            symbol,
-            "take_profit",
-            self._against_side(side),
-            amount=amount,
-            params={"stopPrice": take_profit, "reduceOnly": True},
+            symbol, "take_profit", self._against_side(side), amount=amount, params={"stopPrice": take_profit, "reduceOnly": True}
         )
 
         try:
