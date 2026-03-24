@@ -30,12 +30,16 @@ line-length = 140
 target-version = "py312"
 src = ["src", "submodules/fundingbot-sdk/src"]
 preview = true
+exclude = [
+  "tmp"
+]
 
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
   "D203", "ERA001", "COM812", "INP001", "PLR0913", "PLR0917", "TC001", "D107",
-  "RUF001", "RUF002", "RUF003", "D100", "ISC001", "ISC002", "N805", "PLR0904", "CPY001", "DOC201"
+  "RUF001", "RUF002", "RUF003", "D100", "ISC001", "ISC002", "N805", "PLR0904", "CPY001",
+  "DOC201", "DOC502"
 ]
 
 [tool.ruff.format]
