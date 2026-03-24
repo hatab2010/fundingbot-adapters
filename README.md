@@ -17,20 +17,26 @@
 ```bash
 git clone --recurse-submodules <URL-репозитория-adapters> fundingbot-adapters
 cd fundingbot-adapters
-poetry install
 ```
 
 Если репозиторий уже клонирован без сабмодуля:
 
 ```bash
 git submodule update --init --recursive
-poetry install
 ```
 
 Обновить сабмодуль на актуальное состояние ветки по умолчанию:
 
 ```bash
 git submodule update --remote --recursive
+```
+
+### Установка пакетов
+
+```
+pip install poetry
+poetry install
+pip uninstall aiodns
 ```
 
 ### Зависимость `fundingbot-sdk`
@@ -87,20 +93,10 @@ class MyBybitClient(CcxtClient):
 # Запуск тестов
 poetry run pytest -q
 
-# Линтер/форматтер (ruff)
+# Линтер pytright
+poetry run pyright
+
+# Линтер/форматтер ruff
 poetry run ruff check
 poetry run ruff format
-
-# Типизация (pyright)
-poetry run pyright
-```
-
-### Git-хуки (проверки перед commit и push)
-
-```bash
-# Установить хуки pre-commit и pre-push
-poetry run pre-commit install --hook-type pre-commit --hook-type pre-push
-
-# Прогнать все проверки вручную по всему репозиторию
-poetry run pre-commit run --all-files
 ```

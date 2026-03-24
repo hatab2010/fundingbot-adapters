@@ -20,11 +20,7 @@ class TestBitgetClient(CcxtClientContract):
 
         """
         config = CexClientConfig(
-            api_key=BITGET_API_KEY,
-            api_secret=BITGET_SECRET,
-            password=BITGET_PASSWORD,
-            testnet=TESTNET,
-            default_type="swap",
+            api_key=BITGET_API_KEY, api_secret=BITGET_SECRET, password=BITGET_PASSWORD, testnet=TESTNET, default_type="swap"
         )
         client = BitgetClient(config, verbose=True)
         try:

@@ -127,3 +127,10 @@ dmypy.json
 .vscode/
 
 poetry.lock
+/AGENTS.md
+/scripts/
+/prompts/
+/.idea/
+/tmp/tests/hello-world/
+
+tmp

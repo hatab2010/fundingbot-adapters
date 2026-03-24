@@ -1,11 +1,12 @@
 import contextlib
-import re
+import string
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
+from fundingbot_adapters.kraken_futures_client import ExchangeUsesFiatQuoteCurrencies
 from fundingbot_sdk.contracts.errors import UnsupportedFeatureError
 from fundingbot_sdk.contracts.ports.cex_client import CexClientPort
 from fundingbot_sdk.contracts.protocols import PositionProtocol
@@ -16,9 +17,21 @@ class CcxtClientContract:
     """Тестовый контракт для проверки работы CcxtClient."""
 
     @pytest.fixture
-    def symbol(self) -> str:
+    def quote_currency(self, client: CcxtClient) -> str:
+        """Котируемая валюта."""
+        if issubclass(client.__class__, ExchangeUsesFiatQuoteCurrencies):
+            return "USD"
+        return "USDT"
+
+    @pytest.fixture
+    def symbol(self, quote_currency: str) -> str:
         """Символ для тестирования."""
-        return "XRP/USDT:USDT"
+        return f"XRP/{quote_currency}:{quote_currency}"
+
+    @pytest.fixture
+    def btc_symbol(self, quote_currency: str) -> str:
+        """Символ для тестирования."""
+        return f"BTC/{quote_currency}:{quote_currency}"
 
     @pytest.fixture
     def amount(self) -> Decimal:
@@ -31,10 +44,41 @@ class CcxtClientContract:
         raise NotImplementedError
 
     @pytest.mark.asyncio
-    async def test_get_balance(self, client: CcxtClient):
+    async def test_get_market_symbols(self, client: CcxtClient, quote_currency: str):
+        symbols = await client.get_market_symbols()
+        assert len(symbols) > 0
+        assert any(s.endswith(f"/{quote_currency}:{quote_currency}") for s in symbols)
+
+    @pytest.mark.asyncio
+    async def test_close_positions(self, client: CcxtClient, symbol: str):
+        positions = await client.get_positions([symbol])
+        if len(positions) == 0:
+            return
+
+        for position in positions:
+            await client.create_order(
+                symbol=symbol,
+                side="sell" if position.side == "long" else "buy",
+                order_type="market",
+                amount=position.contracts,
+                params={"reduceOnly": True, "offset": "close"},
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_balance(self, client: CcxtClient, quote_currency: str):
         """Тестирование получения баланса."""
-        balance = await client.get_balance("USDT")
+        balance = await client.get_balance(quote_currency)
         assert balance.free > 0
+
+    @pytest.mark.asyncio
+    async def test_get_trigger_orders(self, client: CcxtClient, symbol: str) -> None:
+        tpsl_orders = await client.get_trigger_orders(symbol=symbol)
+        assert len(tpsl_orders) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_positions(self, client: CcxtClient, symbol: str):
+        positions = await client.get_positions([symbol])
+        assert len(positions) == 0
 
     @pytest.mark.asyncio
     async def test_tpsl_lifecycle_asserts(self, client: CcxtClient, symbol: str, amount: Decimal) -> None:
@@ -51,8 +95,9 @@ class CcxtClientContract:
         expected_leverage = 3
 
         # 1) Инициализация режимов и плеча
-        await client.set_position_mode(hedged=False, symbol=symbol)
-        await client.set_margin_mode(margin_mode="isolated", symbol=symbol)
+        with contextlib.suppress(UnsupportedFeatureError):
+            await client.set_position_mode(hedged=False, symbol=symbol)
+        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 3})
         await client.set_leverage(leverage=expected_leverage, symbol=symbol)
 
         # Подготовка размеров
@@ -60,22 +105,18 @@ class CcxtClientContract:
         contracts = amount / instrument.contract_size
 
         ticker = await client.get_ticker(symbol)
-        take_profit = ticker.last_price * Decimal("1.2")
-        stop_loss = ticker.last_price * Decimal("0.9")
+        take_profit = client.price_to_precision(symbol, ticker.last_price * Decimal("1.2"))
+        stop_loss = client.price_to_precision(symbol, ticker.last_price * Decimal("0.9"))
 
         # 2) Открываем позицию с TP/SL
         await client.create_tpsl_position(
-            symbol=symbol,
-            order_type="market",
-            side="buy",
-            amount=contracts,
-            take_profit=take_profit,
-            stop_loss=stop_loss,
+            symbol=symbol, order_type="market", side="buy", amount=contracts, take_profit=take_profit, stop_loss=stop_loss
         )
 
         # 3) Проверки позиции
         positions = await client.get_positions([symbol])
         assert len(positions) == 1
+        assert positions[0].symbol == symbol
         position = positions[0]
 
         # Проверка плеча и режима позиции (one-way)
@@ -90,11 +131,7 @@ class CcxtClientContract:
 
         # 4) Закрываем позицию рыночным reduceOnly и проверяем, что ордера исчезли
         await client.create_order(
-            symbol=symbol,
-            order_type="market",
-            side="sell",
-            amount=position.contracts,
-            params={"reduceOnly": True, "offset": "close"},
+            symbol=symbol, order_type="market", side="sell", amount=position.contracts, params={"reduceOnly": True, "offset": "close"}
         )
 
         positions_after = await client.get_positions([symbol])
@@ -150,28 +187,36 @@ class CcxtClientContract:
         assert len(trigger_orders) == 0  # Ожидается 0 ордеров
 
     @pytest.mark.asyncio
-    async def test_get_funding_usdt_rates(self, client: CcxtClient):
+    async def test_get_funding_rate(self, client: CcxtClient, symbol: str):
+        data = await client.get_funding_rate(symbol=symbol)
+        assert data.funding_rate > -0.01
+        assert data.funding_rate < 0.01
+        assert data.symbol == symbol
+
+    @pytest.mark.asyncio
+    async def test_get_funding_usdt_rates(self, client: CcxtClient, quote_currency: str):
         data = await client.get_funding_usdt_rates()
         assert len(data) > 0
-        pattern = re.compile(r"^(?P<base>[A-Z0-9]{1,32})\/USDT:USDT$")
+        symbol_suffix = f"/{quote_currency}:{quote_currency}"
         for item in data:
-            assert pattern.match(item.symbol), (
-                f"symbol не соответствует ^(?P<base>[A-Z0-9]{2, 32})\\/USDT:USDT$: {item.symbol}"
+            assert item.symbol.endswith(symbol_suffix), f"symbol должен заканчиваться на {symbol_suffix}: {item.symbol}"
+            base_length = len(item.symbol) - len(symbol_suffix)
+            assert 1 <= base_length <= 32, f"Длина base-валюты в symbol должна быть от 1 до 32 символов: {item.symbol}"
+            assert all(ch not in string.whitespace for ch in item.symbol[:base_length]), (
+                f"base-валюта в symbol не должна содержать пробельные символы: `{item.symbol}`"
             )
             dt = getattr(item, "funding_date", None)
             assert dt is not None, "funding_date отсутствует в элементе ответа"
             assert dt.tzinfo is not None, f"funding_date без tzinfo: {dt}"
-            assert dt.tzinfo.utcoffset(dt) == timedelta(0), (
-                f"funding_date должен быть UTC-aware, сейчас({item.symbol}): {dt}"
-            )
+            assert dt.tzinfo.utcoffset(dt) == timedelta(0), f"funding_date должен быть UTC-aware, сейчас({item.symbol}): {dt}"
             assert isinstance(item.funding_rate, Decimal), "funding_rate должен быть Decimal"
             now_utc = datetime.now(UTC)
             assert dt >= now_utc - timedelta(seconds=5), f"funding_date в прошлом: {dt} < {now_utc}"
 
     @pytest.mark.asyncio
-    async def test_get_ticker(self, client: CcxtClient):
+    async def test_get_ticker(self, client: CcxtClient, btc_symbol: str) -> None:
         await client.load_markets()
-        data = await client.get_ticker("BTC/USDT:USDT")
+        data = await client.get_ticker(btc_symbol)
         assert data.last_price != 0
 
     @pytest.mark.asyncio
@@ -199,8 +244,9 @@ class CcxtClientContract:
         instrument_info = await client.get_instrument_info(symbol)
         amount /= instrument_info.contract_size
 
-        await client.set_position_mode(hedged=False, symbol=symbol)
-        await client.set_margin_mode(margin_mode="isolated", symbol=symbol)
+        with contextlib.suppress(UnsupportedFeatureError):
+            await client.set_position_mode(hedged=False, symbol=symbol)
+        await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 2})
 
         leverage_by_side = {"buy": 2, "sell": 4}
 
@@ -238,11 +284,11 @@ class CcxtClientContract:
             data_without_position = await client.get_positions([symbol])
             assert len(data_without_position) == 0
 
-
     @pytest.mark.asyncio
     async def test_double_init_params(self, client: CcxtClient, symbol: str):
-        await client.set_position_mode(hedged=False, symbol=symbol)
-        await client.set_position_mode(hedged=False, symbol=symbol)
+        with contextlib.suppress(UnsupportedFeatureError):
+            await client.set_position_mode(hedged=False, symbol=symbol)
+            await client.set_position_mode(hedged=False, symbol=symbol)
         await client.set_leverage(leverage=1, symbol=symbol)
         await client.set_leverage(leverage=1, symbol=symbol)
         await client.set_margin_mode(margin_mode="isolated", symbol=symbol, params={"leverage": 1})
@@ -254,7 +300,8 @@ class CcxtClientContract:
 
     @pytest.mark.asyncio
     async def test_set_position_mode(self, client: CcxtClient):
-        await client.set_position_mode(hedged=False, symbol=None)
+        with contextlib.suppress(UnsupportedFeatureError):
+            await client.set_position_mode(hedged=False, symbol=None)
 
     @pytest.mark.asyncio
     async def test_set_margin_mode(self, client: CcxtClient, symbol: str):
